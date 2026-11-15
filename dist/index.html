@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An independent SQL analytics benchmark. Compare execution accuracy, inspect model queries, and explore reported token usage on six selected BIRD Mini-Dev questions.">
+  <meta name="theme-color" content="#f7f8fa">
+  <title>QueryBench — SQL analytics benchmark</title>
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <aside class="sidebar">
+    <a class="brand" href="#leaderboard" aria-label="QueryBench home"><span class="brand-icon" aria-hidden="true">q<span>:</span></span><span>QueryBench<span class="brand-sub">ANALYTICS BENCHMARK</span></span></a>
+    <div class="nav-label">WORKSPACE</div>
+    <nav aria-label="Main navigation">
+      <a class="nav-item active" href="#leaderboard"><span aria-hidden="true">▤</span> Leaderboard <span class="nav-count" id="nav-models">—</span></a>
+      <a class="nav-item" href="#question-results"><span aria-hidden="true">▦</span> Question results</a>
+      <a class="nav-item" href="#token-usage"><span aria-hidden="true">◴</span> Token usage</a>
+      <a class="nav-item" href="#methodology"><span aria-hidden="true">☷</span> Methodology</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="dataset-note"><span class="tiny-dot"></span> BIRD Mini-Dev<span>SQLite · 2026 annotation release</span></div>
+      <a class="external-link" href="https://huggingface.co/datasets/birdsql/bird_mini_dev" target="_blank" rel="noopener noreferrer">Explore the dataset <span aria-hidden="true">↗</span></a>
+      <div class="sidebar-footer">Independent evaluation.<br>Every result is inspectable.</div>
+    </div>
+  </aside>
+
+  <div class="workspace">
+    <header class="topbar"><div><span class="breadcrumb">Benchmarks</span><span class="slash">/</span>SQL analytics</div><div class="topbar-right"><span class="status-dot"></span> Execution verified <a class="icon-link" href="#methodology" aria-label="About this evaluation">i</a></div></header>
+    <main id="main">
+      <section id="leaderboard" class="intro anchor-section">
+        <div class="eyebrow"><span class="small-square"></span> THE SQL EVALUATION LAB</div>
+        <div class="intro-row"><div><h1>SQL analytics leaderboard<span>.</span></h1><p>Same questions. Same databases. See which models get the answers right.</p></div><a class="button button-light" href="./assets/model_scores.xlsx" download><span aria-hidden="true">↓</span> Download scores</a></div>
+        <div class="scope-line"><span class="tag">BIRD MINI-DEV</span><span>Six-question pilot</span><span class="separator-dot">·</span><span id="updated-label">Updated November 14, 2026</span></div>
+      </section>
+
+      <section class="stats" aria-label="Benchmark overview">
+        <article class="stat"><span class="stat-label">Models evaluated</span><div class="stat-number" id="stat-models">—</div><span class="stat-note">Submitted through OpenCode</span></article>
+        <article class="stat"><span class="stat-label">SQL questions</span><div class="stat-number" id="stat-questions">—</div><span class="stat-note">Across two databases</span></article>
+        <article class="stat"><span class="stat-label">Queries executed</span><div class="stat-number" id="stat-queries">—</div><span class="stat-note" id="stat-execution">Checking execution results</span></article>
+        <article class="stat"><span class="stat-label">Average accuracy</span><div class="stat-number" id="stat-accuracy">—</div><span class="stat-note">Equally weighted model runs</span></article>
+      </section>
+
+      <section class="panel leaderboard-panel" aria-labelledby="rankings-heading">
+        <div class="panel-heading"><div><h2 id="rankings-heading">Model rankings <span class="pill" id="model-count">— models</span></h2><p>Ranked by correct results, with equal ranks for ties.</p></div><a href="./assets/benchmark.json" download="querybench-results.json" class="text-button">Export data <span aria-hidden="true">↗</span></a></div>
+        <div class="toolbar"><div class="segmented" role="group" aria-label="Filter accuracy"><button type="button" class="selected" data-filter="all" aria-pressed="true">All models</button><button type="button" data-filter="perfect" aria-pressed="false">100% accuracy</button></div><div class="toolbar-right"><label class="search-field"><span aria-hidden="true">⌕</span><input id="model-search" type="search" placeholder="Search models…" aria-label="Search model names"></label><label class="sort-field"><span class="sr-only">Sort models</span><select id="sort-select"><option value="accuracy">Accuracy ↓</option><option value="tokens">Tokens ↑</option><option value="name">Name A–Z</option></select></label></div></div>
+        <div class="table-scroll"><table class="rankings"><thead><tr><th class="rank-cell" scope="col">RANK</th><th scope="col">MODEL</th><th scope="col">ACCURACY</th><th class="number" scope="col">PASSED</th><th class="number" scope="col">TOTAL TOKENS</th><th class="number" scope="col">COST <span title="Session cost as reported by OpenCode">ⓘ</span></th><th scope="col"><span class="sr-only">Inspect results</span></th></tr></thead><tbody id="rankings-body"><tr><td colspan="7" class="loading">Loading verified results…</td></tr></tbody></table></div>
+        <div class="table-footer"><span id="visible-count" role="status" aria-live="polite"></span><span><span class="tiny-dot"></span> Compared against reference query outputs</span></div>
+      </section>
+
+      <section id="question-results" class="panel anchor-section" aria-labelledby="questions-heading"><div class="panel-heading"><div><h2 id="questions-heading">Every question, every result</h2><p>A passing query returns the reference values, including duplicate counts and required ordering.</p></div><span class="legend"><span class="result-dot pass-dot"></span> Pass <span class="result-dot fail-dot"></span> Fail</span></div><div id="heatmap" class="table-scroll"></div><div class="question-key" id="question-key"></div></section>
+
+      <div class="lower-grid">
+        <section id="token-usage" class="panel anchor-section" aria-labelledby="tokens-heading"><div class="panel-heading"><div><h2 id="tokens-heading">What went into each answer</h2><p>Reported session tokens, broken down by category.</p></div></div><div class="token-legend"><span><i class="input-color"></i> Input</span><span><i class="reasoning-color"></i> Reasoning</span><span><i class="output-color"></i> Output</span><span><i class="cache-color"></i> Cache read</span></div><div class="token-chart" id="token-chart"></div><p class="panel-footnote">These are session totals, not per-query costs. All four sessions reported $0.00; response times were not supplied.</p></section>
+        <section class="panel findings" aria-labelledby="findings-heading"><div class="panel-heading"><div><span class="eyebrow small-eyebrow">LOOK CLOSER</span><h2 id="findings-heading">Small details. Real failures.</h2></div><span class="findings-icon" aria-hidden="true">⌘</span></div><article><span class="finding-number">01</span><div><h3>A capital letter changes the result.</h3><p>GLM and MiniMax used <code>East Bohemia</code>. The database stores <code>east Bohemia</code>. Both returned zero accounts for Q198.</p></div></article><article><span class="finding-number">02</span><div><h3>The right rows, the wrong field.</h3><p>MiniMax found the 14 households in Q212, but returned district IDs where the reference expects district names.</p></div></article><a class="text-button" href="#methodology">Understand the scoring <span aria-hidden="true">→</span></a></section>
+      </div>
+
+      <section id="methodology" class="methodology anchor-section"><div class="method-heading"><div><div class="eyebrow">MEASURE THE ANSWER</div><h2>Transparent by design.</h2></div><p>This is an independent pilot on six selected questions, not an official BIRD leaderboard or a representative measure of overall model quality.</p></div><div class="method-grid"><article><span class="step">01 / INPUT</span><h3>A shared starting point</h3><p>Questions 198, 200, 210, 212, 315, and 328, with schema descriptions and supplied evidence. Four questions use the financial database; two use student_club.</p></article><article><span class="step">02 / EXECUTION</span><h3>Run the submitted SQL</h3><p>Submitted queries and reference queries run against the same read-only SQLite snapshots, with a 30-second query timeout. Syntax errors and timeouts count as failures.</p></article><article><span class="step">03 / COMPARISON</span><h3>Check the actual outputs</h3><p>Compare exact values by column position, preserving duplicate rows. Check row order for Q212 and Q328. Column aliases do not affect the score. No numeric tolerance is applied.</p></article></div><details class="method-details"><summary>Scope, provenance, and limitations <span aria-hidden="true">+</span></summary><div><p>Model names and usage are recorded from user-supplied OpenCode screenshots. SQL was submitted by the user and executed locally; model versions and generation settings were not independently verified. The MiniMax screenshot reports two assistant messages; the others report one. Only the supplied final SQL is scored. Output-format compliance is not scored.</p><p>The question set includes one moderate and five challenging tasks. Public benchmark tasks may have appeared in model training. Matching one database instance is evidence of correctness, not proof of equivalence on all possible data. “Free” is part of the supplied model labels, not a general pricing claim.</p><p>Dataset: <a href="https://huggingface.co/datasets/birdsql/bird_mini_dev" target="_blank" rel="noopener noreferrer">BIRD Mini-Dev</a>, corrected October 2026 annotations with the original SQLite dev databases. Dataset and reference SQL attribution: Li et al., <em>Can LLM Already Serve as A Database Interface?</em> (2023), <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>. This pilot is not affiliated with the BIRD project or the model providers.</p></div></details></section>
+      <footer class="footer"><a href="#leaderboard" class="footer-brand">q<span>:</span> <b>QueryBench</b></a><span>SQL analytics, measured in execution.</span><a href="./assets/benchmark-prompt.md" download>Download the benchmark prompt <span aria-hidden="true">↗</span></a></footer>
+      <div id="error-banner" class="error-banner" role="alert" hidden></div>
+    </main>
+  </div>
+
+  <dialog id="run-dialog" aria-labelledby="dialog-title"><div class="dialog-top"><div><span class="eyebrow">RUN EXPLORER</span><h2 id="dialog-title"></h2><p id="dialog-subtitle"></p></div><button class="close-button" id="close-dialog" type="button" aria-label="Close run explorer">×</button></div><div class="dialog-toolbar"><label for="question-select">Question</label><select id="question-select"></select><span id="question-status" class="status-label"></span></div><div class="dialog-content"><div class="question-description"><span id="question-category" class="eyebrow"></span><h3 id="question-text"></h3><p id="question-evidence"></p><p id="failure-explanation" class="failure-explanation" hidden></p></div><div class="sql-grid"><section><div class="sql-heading"><h3>Submitted SQL</h3><button id="copy-sql" class="text-button" type="button">Copy SQL</button></div><pre><code id="submitted-sql"></code></pre></section><section><div class="sql-heading"><h3>Reference SQL</h3><span>For evaluation</span></div><pre><code id="reference-sql"></code></pre></section></div><div class="result-grid"><section><h3 id="submitted-result-heading">Submitted output</h3><div id="submitted-output" class="output-table table-scroll"></div></section><section><h3 id="reference-result-heading">Reference output</h3><div id="reference-output" class="output-table table-scroll"></div></section></div><p class="panel-footnote">Showing up to five rows per output. Full SQL and run metadata are included in the data export.</p></div></dialog>
+</body>
+</html>
