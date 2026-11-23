@@ -359,10 +359,9 @@ function drawTradeoff(models, key, metric) {
   guides.append(horizontalGuide, verticalGuide);
   guides.hidden = true;
   scatter.append(guides);
-  let selectedModel = null;
 
   function select(model) {
-    selectedModel = model?.key === selectedModel ? null : model?.key;
+    const selectedModel = points.get(model.key)?.classList.contains("selected") ? null : model.key;
     for (const [key, point] of points) {
       point.classList.toggle("selected", key === selectedModel);
       point.setAttribute("aria-pressed", String(key === selectedModel));
@@ -411,12 +410,6 @@ function drawTradeoff(models, key, metric) {
     : `Best trade-offs: ${frontier.map((model) => model.name).join(" and ")}. The dashed line connects these measured models; it is not a trend line. Other models offer no accuracy gain for their resource use.`;
   $("#tradeoff-frontier-key").hidden = frontier.length < 2;
   $("#tradeoff-note").textContent = `Horizontal axis uses a log scale. ${frontierNote} Ivory marks the weighted leader.`;
-  scatter.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") selectedModel = null;
-  });
-  $("#tradeoff-models").onkeydown = (event) => {
-    if (event.key === "Escape") selectedModel = null;
-  };
 }
 
 function drawDifficulty(models, tasks) {
