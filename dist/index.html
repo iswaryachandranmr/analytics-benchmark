@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400..800&amp;family=Source+Serif+4:ital,opsz,wght@0,8..60,400..750;1,8..60,600&amp;display=swap">
-  <link rel="stylesheet" href="style.css?v=chart-selection">
+  <link rel="stylesheet" href="style.css?v=author-byline">
   <script>document.documentElement.classList.add('m-enter');</script>
   <script src="app.js?v=chart-selection" defer></script>
 </head>
@@ -22,7 +22,10 @@
   <header class="nav masthead">
     <div class="shell wrap masthead-inner">
       <a class="skip" href="#main">Skip to benchmark</a>
-      <a class="brand" href="./"><img src="assets/favicon.svg" width="30" height="30" alt="">QueryBench</a>
+      <div class="brand-group">
+        <a class="brand" href="./"><img src="assets/favicon.svg" width="30" height="30" alt="">QueryBench</a>
+        <p class="brand-byline"><span>by Iswarya Ramachandran</span><a href="https://www.linkedin.com/in/iswarya-ramachandran-978505429">LinkedIn</a><a href="https://github.com/iswaryaramachandranmr">GitHub</a></p>
+      </div>
       <nav aria-label="Main navigation">
         <a href="#metrics">Metrics</a><a href="#efficiency">Efficiency</a><a href="#explorer">Tasks</a><a class="nav-action" href="#leaderboard">Leaderboard</a>
       </nav>
@@ -33,7 +36,7 @@
       <section class="hero leaderboard" id="leaderboard" data-enter aria-labelledby="leaderboard-title" hidden>
         <div class="shell wrap leaderboard-grid">
         <div class="leaderboard-header">
-          <div class="section-heading"><p class="benchmark-source">BIRD Mini-Dev / SQLite</p><h1 id="leaderboard-title">QueryBenchmark Score</h1><p id="leaderboard-weight-summary"></p></div>
+          <div class="section-heading"><h1 id="leaderboard-title">QueryBenchmark Score</h1><p id="leaderboard-weight-summary"></p></div>
           <div class="leaderboard-header-aside">
             <div class="query-marquee" aria-hidden="true">
               <code><b>SELECT</b> model_key, AVG(sql_execution_ms) <b>FROM</b> benchmark_metrics <b>GROUP BY</b> model_key;</code>

@@ -39,6 +39,10 @@ section { scroll-margin-top: 1.4rem; }
 .masthead-inner { position: relative; min-height: 5.85rem; display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; border-bottom: 1px solid var(--line); }
 .brand { display: inline-flex; align-items: center; gap: .55rem; justify-self: start; font: italic 600 1.4rem var(--display); letter-spacing: -.015em; }
 .brand img { width: 1.55rem; height: 1.55rem; }
+.brand-group { display: grid; gap: .2rem; }
+.brand-byline { display: flex; align-items: baseline; flex-wrap: wrap; gap: .15rem .65rem; font-size: .8125rem; color: var(--muted); }
+.masthead .brand-byline a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); }
+.masthead .brand-byline a:hover { text-decoration-color: var(--ink); }
 .masthead a { text-decoration: none; }
 .masthead a:hover { text-decoration: underline; }
 .masthead nav { display: flex; align-items: center; gap: clamp(1rem, 3.4vw, 3rem); color: var(--ink); font-size: 1rem; }
@@ -56,7 +60,6 @@ section { scroll-margin-top: 1.4rem; }
 .leaderboard-header { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); align-items: end; gap: 1rem; padding-bottom: clamp(1.3rem, 3.5vw, 2.4rem); }
 .leaderboard-header .section-heading { margin: 0; }
 .leaderboard-header h1 { font: 650 clamp(2.4rem, 5.3vw, 4.5rem)/1.04 var(--display); letter-spacing: -.04em; }
-.leaderboard-header .benchmark-source { margin: 0 0 .6rem; font-size: .875rem; font-style: italic; }
 #leaderboard-weight-summary { margin-top: .7rem; font-size: clamp(.875rem, 1.5vw, 1.025rem); }
 .leaderboard-header-aside { display: grid; gap: .65rem; min-width: 0; }
 .leaderboard-header-aside .run-facts { justify-content: end; }
