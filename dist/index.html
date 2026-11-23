@@ -6,8 +6,11 @@
   <meta name="description" content="Compare five models across 75 BIRD Mini-Dev SQL questions by correctness, cost, and execution speed.">
   <title>SQL Benchmark / QueryBench</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=efficiency">
-  <script src="app.js?v=efficiency" defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400..700&amp;family=Manrope:wght@400..700&amp;display=swap">
+  <link rel="stylesheet" href="style.css?v=paper">
+  <script src="app.js?v=paper" defer></script>
 </head>
 <body id="top">
   <a class="skip" href="#main">Skip to benchmark</a>
@@ -22,9 +25,8 @@
   <main class="shell" id="main">
     <section class="intro" aria-labelledby="title">
       <div class="intro-copy">
-        <p class="dataset"><span></span> BIRD Mini-Dev / SQLite</p>
         <h1 id="title">Which model writes better SQL?</h1>
-        <p class="subtitle">Five models answer the same 75 SQL questions. Compare correctness, cost, and execution speed.</p>
+        <p class="subtitle">Five models, one set of SQL questions. See which gets the right answers for the least cost and time.</p>
         <a class="primary-link" href="#leaderboard">Explore the benchmark</a>
       </div>
       <figure class="constellation" id="constellation" hidden>
@@ -60,7 +62,7 @@
         <div class="score-detail" id="score-detail" aria-live="polite"></div>
       </section>
       <section class="metrics" id="metrics" aria-labelledby="metrics-title">
-        <div class="section-heading"><h2 id="metrics-title">The metrics behind the score</h2><p>Bright green marks each metric winner. <span class="overall-mark" aria-hidden="true">◆</span> marks the overall leader.</p></div>
+        <div class="section-heading"><h2 id="metrics-title">The metrics behind the score</h2><p>Yellow-green marks each metric winner. <span class="overall-mark" aria-hidden="true">◆</span> marks the overall leader.</p></div>
         <div class="metric-grid" id="metric-grid"></div>
       </section>
       <section class="efficiency" id="efficiency" aria-labelledby="efficiency-title" hidden>

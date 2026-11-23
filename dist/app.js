@@ -306,7 +306,7 @@ function drawTradeoff(models, key, metric) {
   const frontierNote = frontier.length === 1
     ? `${frontier[0].name} leads on both axes.`
     : "The dashed line connects models that cannot be improved on one measure without giving up ground on the other.";
-  $("#tradeoff-note").textContent = `Horizontal axis uses a log scale. ${frontierNote} Bright green marks the weighted leader.`;
+  $("#tradeoff-note").textContent = `Horizontal axis uses a log scale. ${frontierNote} Yellow-green marks the weighted leader.`;
   select(models.find((model) => points.has(model.key)));
 }
 
