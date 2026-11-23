@@ -340,7 +340,7 @@ function drawTradeoff(models, key, metric) {
   const frontierNote = frontier.length === 1
     ? `${frontier[0].name} leads on both axes.`
     : "The dashed line connects models that cannot be improved on one measure without giving up ground on the other.";
-  $("#tradeoff-note").textContent = `Horizontal axis uses a log scale. ${frontierNote} Gold marks the weighted leader.`;
+  $("#tradeoff-note").textContent = `Horizontal axis uses a log scale. ${frontierNote} Ivory marks the weighted leader.`;
   select(models.find((model) => points.has(model.key)));
 }
 
@@ -454,11 +454,25 @@ function renderExplorer({models, tasks}) {
   draw();
 }
 
+async function loadBenchmarkData() {
+  if (location.protocol === "file:") {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "assets/benchmark-preview.js";
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("The local benchmark preview data could not load."));
+      document.head.append(script);
+    });
+    return window.queryBenchmarkPreview;
+  }
+  const response = await fetch("assets/benchmark.json?v=weighted-chart");
+  if (!response.ok) throw new Error(`Benchmark data returned HTTP ${response.status}`);
+  return response.json();
+}
+
 async function load() {
   try {
-    const response = await fetch("assets/benchmark.json?v=weighted-chart");
-    if (!response.ok) throw new Error(`Benchmark data returned HTTP ${response.status}`);
-    const data = await response.json();
+    const data = await loadBenchmarkData();
     data.models.sort((first, second) => second.score - first.score);
     renderFacts(data);
     renderWeights(data.weights);

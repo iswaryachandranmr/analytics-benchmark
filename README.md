@@ -20,6 +20,8 @@ Correctness uses all 75 assigned tasks, so failures earn no credit. Spend includ
 
 Run `python3 -m http.server 8080 --directory dist` and open `http://localhost:8080`. No dependency installation or build is needed.
 
+Opening `dist/index.html` directly also works, using the matching `dist/assets/benchmark-preview.js` snapshot. The exporter refreshes both data files together. To rebuild only this preview snapshot from the existing public JSON, run `python3 scripts/sync_data.py --preview-only`.
+
 Refresh the browser data from the reviewed SQLite run with:
 
 ```sh

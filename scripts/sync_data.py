@@ -64,10 +64,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, default=ROOT.parent / "results/benchmark75.sqlite")
     parser.add_argument("--run", default=RUN)
+    parser.add_argument("--preview-only", action="store_true", help="Rebuild direct-file preview data from the existing public JSON export.")
     args = parser.parse_args()
-    data = export(args.database, args.run)
-    (ROOT / "dist/assets/benchmark.json").write_text(
-        json.dumps(data, ensure_ascii=False, separators=(",", ":"), allow_nan=False) + "\n", encoding="utf-8"
+    output = ROOT / "dist/assets/benchmark.json"
+    if args.preview_only:
+        data = json.loads(output.read_text(encoding="utf-8"))
+    else:
+        data = export(args.database, args.run)
+        output.write_text(
+            json.dumps(data, ensure_ascii=False, separators=(",", ":"), allow_nan=False) + "\n", encoding="utf-8"
+        )
+    (ROOT / "dist/assets/benchmark-preview.js").write_text(
+        "window.queryBenchmarkPreview = " + json.dumps(data, ensure_ascii=False, separators=(",", ":"), allow_nan=False) + ";\n", encoding="utf-8"
     )
     print(f"Exported {len(data['tasks'])} tasks and {len(data['models'])} model scores.")
 
