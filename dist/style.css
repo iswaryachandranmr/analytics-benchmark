@@ -111,6 +111,12 @@ section { scroll-margin-top: 1.4rem; }
 .chart-tooltip strong { color: var(--ivory); font-weight: 700; }
 .chart-tooltip span { color: #efc781; }
 .chart-detail-target:focus-visible { outline-offset: 2px; }
+.chart-detail-target[role="button"] { cursor: pointer; }
+.chart-detail-target.is-pinned { outline: 1px solid var(--ink); outline-offset: -1px; background: var(--leader-surface); }
+.chart-detail-target.is-pinned :is(.accuracy-ring, .cost-fill, .speed-dot, .efficiency-bar) { filter: brightness(1.15); }
+.is-pinned .accuracy-ring, .is-pinned .speed-dot { box-shadow: 0 0 0 2px var(--ivory), 0 0 0 3px var(--ink); }
+.is-pinned :is(.cost-fill, .efficiency-bar) { background: var(--ivory); outline: 1px solid var(--ink); }
+.score-row[aria-pressed="true"] { outline: 1px solid var(--ivory); outline-offset: -1px; background: var(--leader-surface); }
 .metric-chart li.chart-detail-target:focus-visible, .efficiency-rank li.chart-detail-target:focus-visible, .difficulty td.chart-detail-target:focus-visible { background: var(--leader-surface); }
 
 @media (hover: hover) and (pointer: fine) {
@@ -213,9 +219,17 @@ section { scroll-margin-top: 1.4rem; }
 .scatter-grid.horizontal span { position: absolute; right: calc(100% + .4rem); transform: translateY(-50%); }
 .scatter-grid.vertical { left: var(--position); height: 100%; border-left: 1px solid var(--grid); }
 .scatter-grid.vertical span { position: absolute; top: calc(100% + .28rem); transform: translateX(-50%); white-space: nowrap; }
-.scatter-point { position: absolute; display: grid; place-items: center; transform: translate(-50%, -50%); width: 1.15rem; height: 1.15rem; border: 1px solid var(--ink); border-radius: 50%; color: var(--ink); background: var(--surface-raised); font-size: .65rem; font-weight: 650; cursor: pointer; }
+.scatter-point { position: absolute; display: grid; place-items: center; transform: translate(-50%, -50%); width: 1.15rem; height: 1.15rem; padding: 0; border: 1px solid var(--ink); border-radius: 50%; color: var(--ink); background: var(--surface-raised); font-size: .65rem; font-weight: 650; cursor: pointer; }
+.scatter-point::after { content: ""; position: absolute; inset: -.5rem; border-radius: inherit; }
 .scatter-point.chart-leader { z-index: 1; background: var(--ivory); }
-.scatter-point.selected { z-index: 2; outline: 1px solid var(--ink); outline-offset: 2px; }
+.scatter-point.selected { z-index: 2; background: var(--ivory); outline: 2px solid var(--ink); outline-offset: 3px; }
+.scatter-guides { position: absolute; inset: 0; pointer-events: none; }
+.scatter-guide { position: absolute; border-color: var(--ink); }
+.scatter-guide.horizontal { left: 0; border-top: 1px dotted; }
+.scatter-guide.vertical { border-left: 1px dotted; }
+.scatter-axis-value { position: absolute; z-index: 3; padding: .12rem .3rem; background: var(--black); color: var(--ivory); font-size: .6875rem; font-weight: 650; white-space: nowrap; }
+.accuracy-value { right: 100%; top: 0; transform: translateY(-50%); }
+.resource-value { bottom: -1.7rem; left: 0; transform: translateX(-50%); }
 .tradeoff-models { display: grid; gap: .22rem; list-style: none; margin: 0; padding: 0; }
 .tradeoff-model { width: 100%; display: flex; gap: .55rem; align-items: center; border: 1px solid transparent; padding: .37rem .48rem; border-radius: .22rem; text-align: left; background: none; color: var(--ink); }
 .tradeoff-model:hover, .tradeoff-model[aria-pressed="true"] { border-color: var(--control-border); background: var(--leader-surface); }

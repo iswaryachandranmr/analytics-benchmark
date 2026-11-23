@@ -21,12 +21,26 @@ function element(tag, className, text) {
   return node;
 }
 
+let pinnedChartDetail = null;
+
 function bindChartDetail(target, title, details, keyboard = false) {
   const tooltip = $("#chart-tooltip");
+  const selectable = !target.matches(".score-row, .scatter-point, .tradeoff-model");
   target.classList.add("chart-detail-target");
+  target.dataset.selectionKey = title;
   if (keyboard) {
     target.tabIndex = 0;
     target.setAttribute("aria-label", [title, ...details].join(". "));
+    target.setAttribute("role", "button");
+  }
+  if (selectable) target.setAttribute("aria-pressed", "false");
+  if (keyboard) {
+    target.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        target.click();
+      }
+    });
   }
 
   function show() {
@@ -39,17 +53,46 @@ function bindChartDetail(target, title, details, keyboard = false) {
     tooltip.style.top = `${above >= 8 ? above : Math.min(innerHeight - tooltip.offsetHeight - 8, bounds.bottom + 9)}px`;
   }
 
-  function hide() { tooltip.hidden = true; }
+  function hide() {
+    if (pinnedChartDetail?.target.isConnected) pinnedChartDetail.show();
+    else tooltip.hidden = true;
+  }
   target.addEventListener("pointerenter", (event) => { if (event.pointerType !== "touch") show(); });
   target.addEventListener("pointerleave", () => { if (!target.matches(":focus-visible")) hide(); });
   target.addEventListener("focus", show);
   target.addEventListener("blur", hide);
-  target.addEventListener("click", (event) => { if (event.pointerType === "touch") show(); });
+  target.addEventListener("click", () => {
+    if (selectable) {
+      const scope = target.closest(".metric-chart, .chart-panel, .difficulty") || target.parentElement;
+      const selected = target.getAttribute("aria-pressed") !== "true";
+      for (const item of scope.querySelectorAll(".chart-detail-target")) {
+        const active = selected && item.dataset.selectionKey === title;
+        item.classList.toggle("is-pinned", active);
+        item.setAttribute("aria-pressed", String(active));
+      }
+      pinnedChartDetail = selected ? { target, show } : null;
+      if (!selected) { tooltip.hidden = true; return; }
+    }
+    show();
+  });
 }
 
 window.addEventListener("scroll", () => { $("#chart-tooltip").hidden = true; }, { passive: true });
 window.addEventListener("resize", () => { $("#chart-tooltip").hidden = true; });
-document.addEventListener("keydown", (event) => { if (event.key === "Escape") $("#chart-tooltip").hidden = true; });
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  pinnedChartDetail = null;
+  for (const target of document.querySelectorAll(".is-pinned")) {
+    target.classList.remove("is-pinned");
+    target.setAttribute("aria-pressed", "false");
+  }
+  for (const target of document.querySelectorAll(".scatter-point.selected, .tradeoff-model[aria-pressed='true']")) {
+    target.classList.remove("selected");
+    target.setAttribute("aria-pressed", "false");
+  }
+  for (const guide of document.querySelectorAll(".scatter-guides")) guide.hidden = true;
+  $("#chart-tooltip").hidden = true;
+});
 document.addEventListener("pointerdown", (event) => { if (!event.target.closest(".chart-detail-target")) $("#chart-tooltip").hidden = true; });
 
 function renderFacts(data) {
@@ -131,7 +174,6 @@ function renderLeaderboard(models, weights) {
 
 function costColumns(models, max) {
   const plot = element("div", "cost-plot");
-  plot.setAttribute("aria-hidden", "true");
   const columns = element("div", "cost-columns");
   for (const [index, model] of models.entries()) {
     const column = element("div", index === 0 ? "cost-column chart-leader" : "cost-column");
@@ -140,7 +182,7 @@ function costColumns(models, max) {
     fill.style.height = `${100 * model.cost / max}%`;
     track.append(fill);
     column.append(track, element("span", "column-index", String(index + 1)));
-    bindChartDetail(column, model.name, [`Total spend: ${metrics.cost.format(model)}`]);
+    bindChartDetail(column, model.name, [`Total spend: ${metrics.cost.format(model)}`], true);
     columns.append(column);
   }
   plot.append(element("span", "cost-ceiling", currency.format(max)), columns, element("span", "cost-origin", "$0"));
@@ -306,18 +348,45 @@ function drawTradeoff(models, key, metric) {
   svg.append(path);
   scatter.append(svg);
 
+  const guides = element("div", "scatter-guides");
+  guides.setAttribute("aria-hidden", "true");
+  const horizontalGuide = element("div", "scatter-guide horizontal");
+  const verticalGuide = element("div", "scatter-guide vertical");
+  const accuracyValue = element("span", "scatter-axis-value accuracy-value");
+  const resourceValue = element("span", "scatter-axis-value resource-value");
+  horizontalGuide.append(accuracyValue);
+  verticalGuide.append(resourceValue);
+  guides.append(horizontalGuide, verticalGuide);
+  guides.hidden = true;
+  scatter.append(guides);
+  let selectedModel = null;
+
   function select(model) {
-    for (const [key, point] of points) point.classList.toggle("selected", key === model.key);
-    for (const [key, label] of labels) label.setAttribute("aria-pressed", String(key === model.key));
+    selectedModel = model?.key === selectedModel ? null : model?.key;
+    for (const [key, point] of points) {
+      point.classList.toggle("selected", key === selectedModel);
+      point.setAttribute("aria-pressed", String(key === selectedModel));
+    }
+    for (const [key, label] of labels) label.setAttribute("aria-pressed", String(key === selectedModel));
+    guides.hidden = !selectedModel;
+    if (!selectedModel) return;
+    horizontalGuide.style.top = `${y(accuracy(model))}%`;
+    horizontalGuide.style.width = `${x(metric.value(model))}%`;
+    verticalGuide.style.left = `${x(metric.value(model))}%`;
+    verticalGuide.style.top = `${y(accuracy(model))}%`;
+    verticalGuide.style.height = `${100 - y(accuracy(model))}%`;
+    accuracyValue.textContent = `${fixed(accuracy(model))}%`;
+    resourceValue.textContent = metricText(key, metric, model);
   }
 
   const items = models.flatMap((model, index) => {
     if (!(metric.value(model) > 0)) return [];
     const marker = String(index + 1);
-    const point = element("span", `scatter-point${index === 0 ? " chart-leader" : ""}`, marker);
+    const point = element("button", `scatter-point${index === 0 ? " chart-leader" : ""}`, marker);
+    point.type = "button";
+    point.setAttribute("aria-label", `${model.name}: ${fixed(accuracy(model))}% correct, ${metricText(key, metric, model)}`);
     point.style.left = `${x(metric.value(model))}%`;
     point.style.top = `${y(accuracy(model))}%`;
-    point.setAttribute("aria-hidden", "true");
     point.addEventListener("click", () => select(model));
     const pointDetails = [`Accuracy: ${fixed(accuracy(model))}%`, `${tradeoffTitle}: ${metricText(key, metric, model)}`];
     bindChartDetail(point, model.name, pointDetails);
@@ -342,7 +411,12 @@ function drawTradeoff(models, key, metric) {
     : `Best trade-offs: ${frontier.map((model) => model.name).join(" and ")}. The dashed line connects these measured models; it is not a trend line. Other models offer no accuracy gain for their resource use.`;
   $("#tradeoff-frontier-key").hidden = frontier.length < 2;
   $("#tradeoff-note").textContent = `Horizontal axis uses a log scale. ${frontierNote} Ivory marks the weighted leader.`;
-  select(models.find((model) => points.has(model.key)));
+  scatter.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") selectedModel = null;
+  });
+  $("#tradeoff-models").onkeydown = (event) => {
+    if (event.key === "Escape") selectedModel = null;
+  };
 }
 
 function drawDifficulty(models, tasks) {
