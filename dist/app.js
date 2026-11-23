@@ -339,7 +339,8 @@ function drawTradeoff(models, key, metric) {
   $("#tradeoff-models").replaceChildren(...items);
   const frontierNote = frontier.length === 1
     ? `${frontier[0].name} leads on both axes.`
-    : "The dashed line connects models that cannot be improved on one measure without giving up ground on the other.";
+    : `Best trade-offs: ${frontier.map((model) => model.name).join(" and ")}. The dashed line connects these measured models; it is not a trend line. Other models offer no accuracy gain for their resource use.`;
+  $("#tradeoff-frontier-key").hidden = frontier.length < 2;
   $("#tradeoff-note").textContent = `Horizontal axis uses a log scale. ${frontierNote} Ivory marks the weighted leader.`;
   select(models.find((model) => points.has(model.key)));
 }
