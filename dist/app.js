@@ -21,6 +21,37 @@ function element(tag, className, text) {
   return node;
 }
 
+function bindChartDetail(target, title, details, keyboard = false) {
+  const tooltip = $("#chart-tooltip");
+  target.classList.add("chart-detail-target");
+  if (keyboard) {
+    target.tabIndex = 0;
+    target.setAttribute("aria-label", [title, ...details].join(". "));
+  }
+
+  function show() {
+    tooltip.replaceChildren(element("strong", "", title), ...details.map((detail) => element("span", "", detail)));
+    tooltip.hidden = false;
+    const bounds = target.getBoundingClientRect();
+    const left = Math.min(innerWidth - tooltip.offsetWidth - 12, Math.max(12, bounds.left + (bounds.width - tooltip.offsetWidth) / 2));
+    const above = bounds.top - tooltip.offsetHeight - 9;
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${above >= 8 ? above : Math.min(innerHeight - tooltip.offsetHeight - 8, bounds.bottom + 9)}px`;
+  }
+
+  function hide() { tooltip.hidden = true; }
+  target.addEventListener("pointerenter", (event) => { if (event.pointerType !== "touch") show(); });
+  target.addEventListener("pointerleave", () => { if (!target.matches(":focus-visible")) hide(); });
+  target.addEventListener("focus", show);
+  target.addEventListener("blur", hide);
+  target.addEventListener("click", (event) => { if (event.pointerType === "touch") show(); });
+}
+
+window.addEventListener("scroll", () => { $("#chart-tooltip").hidden = true; }, { passive: true });
+window.addEventListener("resize", () => { $("#chart-tooltip").hidden = true; });
+document.addEventListener("keydown", (event) => { if (event.key === "Escape") $("#chart-tooltip").hidden = true; });
+document.addEventListener("pointerdown", (event) => { if (!event.target.closest(".chart-detail-target")) $("#chart-tooltip").hidden = true; });
+
 function renderFacts(data) {
   const facts = [["Models evaluated", data.models.length], ["Assigned tasks", data.tasks.length],
     ["Results scored", data.models.reduce((total, model) => total + model.reviewed, 0)]];
@@ -88,6 +119,8 @@ function renderLeaderboard(models, weights) {
     button.setAttribute("aria-controls", "score-detail");
     button.setAttribute("aria-label", `${model.name}: ${fixed(model.score)} out of 100, ${isWinner ? "highest weighted score, rank 1" : `rank ${index + 1}`}`);
     button.addEventListener("click", () => select(model));
+    bindChartDetail(button, `${model.name} · ${fixed(model.score)} / 100`,
+      Object.entries(metrics).map(([key, metric]) => `${metric.name}: ${metric.format(model)} · ${fixed(model.points[key])} / ${weights[key]} pts`));
     button.append(modelName, track, element("strong", "score-total", fixed(model.score)));
     item.append(button);
     $("#score-chart").append(item);
@@ -102,9 +135,12 @@ function costColumns(models, max) {
   const columns = element("div", "cost-columns");
   for (const [index, model] of models.entries()) {
     const column = element("div", index === 0 ? "cost-column chart-leader" : "cost-column");
+    const track = element("div", "cost-bar-track");
     const fill = element("span", "cost-fill");
     fill.style.height = `${100 * model.cost / max}%`;
-    column.append(fill, element("span", "column-index", String(index + 1)));
+    track.append(fill);
+    column.append(track, element("span", "column-index", String(index + 1)));
+    bindChartDetail(column, model.name, [`Total spend: ${metrics.cost.format(model)}`]);
     columns.append(column);
   }
   plot.append(element("span", "cost-ceiling", currency.format(max)), columns, element("span", "cost-origin", "$0"));
@@ -121,6 +157,9 @@ function renderMetrics(models) {
     if (key === "cost") chart.append(costColumns(ordered, max));
     for (const [index, model] of ordered.entries()) {
       const row = element("li", index === 0 ? "chart-leader" : "");
+      const context = key === "correctness" ? `${model.correct} correct out of ${model.planned} tasks`
+        : key === "cost" ? "Includes all saved attempts" : `${model.executed} SQL executions completed`;
+      bindChartDetail(row, model.name, [`${metric.name}: ${metric.format(model)}`, context], true);
       const label = element("div", "metric-label");
       const name = element("span", "metric-name");
       const mark = element("span", key === "correctness" ? "accuracy-ring" : "metric-index", key === "cost" ? String(index + 1) : "");
@@ -207,6 +246,7 @@ function drawEfficiencyRank(models, key, metric) {
     bar.style.height = `${100 * metric.value(model) / max}%`;
     track.append(bar);
     row.append(element("strong", "efficiency-value", metricText(key, metric, model)), track, element("span", "efficiency-name", model.name));
+    bindChartDetail(row, model.name, [`${key === "tokens" ? "Output tokens per task" : metric.label}: ${metricText(key, metric, model)}`, `Rank ${index + 1} of ${rows.length}`], true);
     return row;
   }));
 }
@@ -278,8 +318,9 @@ function drawTradeoff(models, key, metric) {
     point.style.left = `${x(metric.value(model))}%`;
     point.style.top = `${y(accuracy(model))}%`;
     point.setAttribute("aria-hidden", "true");
-    point.title = model.name;
     point.addEventListener("click", () => select(model));
+    const pointDetails = [`Accuracy: ${fixed(accuracy(model))}%`, `${tradeoffTitle}: ${metricText(key, metric, model)}`];
+    bindChartDetail(point, model.name, pointDetails);
     points.set(model.key, point);
     scatter.append(point);
     const item = element("li");
@@ -289,6 +330,7 @@ function drawTradeoff(models, key, metric) {
     copy.append(element("strong", "", model.name), element("small", "", `${fixed(accuracy(model))}% correct / ${metricText(key, metric, model)}`));
     label.append(element("span", "tradeoff-index", marker), copy);
     label.addEventListener("click", () => select(model));
+    bindChartDetail(label, model.name, pointDetails);
     labels.set(model.key, label);
     item.append(label);
     return [item];
@@ -298,7 +340,7 @@ function drawTradeoff(models, key, metric) {
   const frontierNote = frontier.length === 1
     ? `${frontier[0].name} leads on both axes.`
     : "The dashed line connects models that cannot be improved on one measure without giving up ground on the other.";
-  $("#tradeoff-note").textContent = `Horizontal axis uses a log scale. ${frontierNote} Yellow-green marks the weighted leader.`;
+  $("#tradeoff-note").textContent = `Horizontal axis uses a log scale. ${frontierNote} Gold marks the weighted leader.`;
   select(models.find((model) => points.has(model.key)));
 }
 
@@ -329,6 +371,7 @@ function drawDifficulty(models, tasks) {
       if (ratio === best[tier]) cell.classList.add("chart-leader");
       cell.style.setProperty("--heat", `${Math.round(5 + 30 * ratio)}%`);
       cell.append(element("strong", "", `${integer.format(100 * ratio)}%`), element("small", "", `${passed}/${planned}`));
+      bindChartDetail(cell, `${model.name} · ${tiers[tier]}`, [`${passed} of ${planned} tasks correct`, `${planned - passed} mismatched or not executed`], true);
     });
   }
 }
@@ -367,7 +410,7 @@ function renderTask(task, model) {
   for (const [heading, query, missing] of [["Submitted SQL", task.sql, "No SQL was submitted."],
     ["Reference SQL", task.reference_sql, "Reference comparison is unavailable for this task."]]) {
     const column = element("div");
-    column.append(element("h4", "", heading));
+    column.append(element("h3", "", heading));
     if (query) {
       const pre = element("pre");
       pre.append(element("code", "", query));
@@ -423,12 +466,12 @@ async function load() {
     renderMetrics(data.models);
     renderEfficiency(data.models, data.tasks);
     renderExplorer(data);
-    $("#dashboard").hidden = false;
+    for (const selector of ["#leaderboard", "#metrics", "#explorer", "#method"]) $(selector).hidden = false;
     $("#load-state").hidden = true;
     if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
   } catch (error) {
     console.error(error);
-    $("#load-state").textContent = "Benchmark results could not load. Reload the page to try again.";
+    $("#load-state .load-state").textContent = "Benchmark results could not load. Reload the page to try again.";
   }
 }
 

@@ -1,39 +1,51 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-type="software" data-radius="sharp">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Compare five models across 75 BIRD Mini-Dev SQL questions by correctness, cost, and execution speed.">
-  <title>SQL Benchmark / QueryBench</title>
+  <meta name="page-type" content="software">
+  <meta name="site-kind" content="software">
+  <meta name="theme-color" content="#e2a32e">
+  <meta property="og:title" content="QueryBenchmark Score">
+  <meta property="og:description" content="Five models, 75 SQL questions. Compare accuracy, cost, and speed.">
+  <title>QueryBenchmark Score</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400..700&amp;family=Manrope:wght@400..700&amp;display=swap">
-  <link rel="stylesheet" href="style.css?v=weighted-chart">
-  <script src="app.js?v=weighted-chart" defer></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&amp;display=swap">
+  <link rel="stylesheet" href="style.css?v=ochre">
+  <script>document.documentElement.classList.add('m-enter');</script>
+  <script src="app.js?v=chart-details" defer></script>
 </head>
 <body id="top">
-  <a class="skip" href="#main">Skip to benchmark</a>
-  <header class="masthead">
-    <div class="shell masthead-inner">
+  <header class="nav masthead">
+    <div class="shell wrap masthead-inner">
+      <a class="skip" href="#main">Skip to benchmark</a>
       <a class="brand" href="./"><img src="assets/favicon.svg" width="30" height="30" alt="">QueryBench</a>
       <nav aria-label="Main navigation">
         <a href="#metrics">Metrics</a><a href="#efficiency">Efficiency</a><a href="#explorer">Tasks</a><a class="nav-action" href="#leaderboard">Leaderboard</a>
       </nav>
     </div>
   </header>
-  <main class="shell" id="main">
-    <p class="load-state" id="load-state" role="status">Loading benchmark results…</p>
-    <div id="dashboard" hidden>
-      <section class="leaderboard" id="leaderboard" aria-labelledby="leaderboard-title">
+  <main id="main">
+    <section id="load-state" role="status"><div class="shell wrap load-state">Loading benchmark results…</div></section>
+      <section class="hero leaderboard" id="leaderboard" data-enter aria-labelledby="leaderboard-title" hidden>
+        <div class="shell wrap leaderboard-grid">
         <div class="leaderboard-header">
-          <div class="section-heading"><p class="benchmark-source">BIRD Mini-Dev / SQLite</p><h1 id="leaderboard-title">Weighted leaderboard</h1><p id="leaderboard-weight-summary"></p></div>
-          <dl class="run-facts" id="run-facts" aria-label="Benchmark coverage" hidden></dl>
+          <div class="section-heading"><p class="benchmark-source">BIRD Mini-Dev / SQLite</p><h1 id="leaderboard-title">QueryBenchmark Score</h1><p id="leaderboard-weight-summary"></p></div>
+          <div class="leaderboard-header-aside">
+            <div class="query-marquee" aria-hidden="true">
+              <code><b>SELECT</b> model_key, AVG(sql_execution_ms) <b>FROM</b> benchmark_metrics <b>GROUP BY</b> model_key;</code>
+              <code><b>SELECT</b> difficulty, COUNT(*) <b>FROM</b> questions <b>GROUP BY</b> difficulty;</code>
+            </div>
+            <dl class="run-facts" id="run-facts" aria-label="Benchmark coverage" hidden></dl>
+          </div>
         </div>
-        <div class="leaderboard-main">
+        <div class="leaderboard-main app-frame">
           <div class="chart-heading">
             <p>Composite score out of 100</p>
-            <a href="#method">How it’s scored</a>
+            <a class="chart-action" href="#method">See the scoring method</a>
           </div>
           <div class="axis" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
           <ol id="score-chart" class="rank-chart" aria-label="Models ranked by weighted score"></ol>
@@ -44,17 +56,21 @@
             <strong id="winning-score"></strong>
             <span id="winning-model"></span>
           </div>
-          <h3 id="weight-title">Score weights</h3>
+          <p class="weight-title" id="weight-title">Score weights</p>
           <dl id="weight-list"></dl>
         </aside>
         <div class="score-detail" id="score-detail" aria-live="polite"></div>
+        </div>
       </section>
-      <section class="metrics" id="metrics" aria-labelledby="metrics-title">
-        <div class="section-heading"><h2 id="metrics-title">The metrics behind the score</h2><p>Yellow-green marks each metric winner. <span class="overall-mark" aria-hidden="true">◆</span> marks the overall leader.</p></div>
+      <section class="metrics" id="metrics" aria-labelledby="metrics-title" hidden>
+        <div class="shell wrap">
+        <div class="section-heading"><h2 id="metrics-title">The metrics behind the score</h2><p>Gold highlights each metric winner. <span class="overall-mark" aria-hidden="true">◆</span> marks the overall leader.</p></div>
         <div class="metric-grid" id="metric-grid"></div>
+        </div>
       </section>
       <section class="efficiency" id="efficiency" aria-labelledby="efficiency-title" hidden>
-        <div class="section-heading"><h2 id="efficiency-title">Performance and efficiency</h2><p>Compare what each model needs to get through the same benchmark.</p></div>
+        <div class="shell wrap">
+        <div class="section-heading"><h2 id="efficiency-title">Model efficiency</h2><p>Compare what each model needs to get through the same benchmark.</p></div>
         <article class="chart-panel" aria-labelledby="efficiency-chart-title">
           <div class="chart-switcher" id="efficiency-controls" role="group" aria-label="Efficiency metric"></div>
           <div class="chart-panel-body">
@@ -78,9 +94,11 @@
           <div class="panel-heading"><h3 id="difficulty-title">Correctness by difficulty</h3><p>Share of assigned tasks that matched the reference in each difficulty tier.</p></div>
           <div class="difficulty-scroll"><table id="difficulty-table" aria-labelledby="difficulty-title"></table></div>
         </article>
+        </div>
       </section>
-      <section class="explorer" id="explorer" aria-labelledby="explorer-title">
-        <div class="section-heading"><h2 id="explorer-title">Explore the tasks</h2><p>Filter by model or outcome, then open a task to compare its SQL with the reference.</p></div>
+      <section class="explorer" id="explorer" aria-labelledby="explorer-title" hidden>
+        <div class="shell wrap">
+        <div class="section-heading"><h2 id="explorer-title">SQL task results</h2><p>Filter by model or outcome, then open a task to compare its SQL with the reference.</p></div>
         <form class="filters" id="filters" role="search">
           <label class="query-filter">Question or database<input name="query" type="search" placeholder="Search by question, ID, or database"></label>
           <label>Model<select name="model" id="model-filter"><option value="">All models</option></select></label>
@@ -89,21 +107,26 @@
         <p class="result-count" id="task-count" role="status"></p>
         <div id="task-list" class="task-list"></div>
         <div class="pagination" id="pagination" aria-label="Task page controls"><button type="button" id="prev">Previous</button><span id="page-number"></span><button type="button" id="next">Next</button></div>
+        </div>
       </section>
-      <section class="method" id="method" aria-labelledby="method-title">
-        <div class="section-heading"><h2 id="method-title">How it’s scored</h2><p>The three contributions add up to a maximum of 100 points.</p></div>
+      <section class="method" id="method" aria-labelledby="method-title" hidden>
+        <div class="shell wrap">
+        <div class="section-heading"><h2 id="method-title">Scoring method</h2><p>The three contributions add up to a maximum of 100 points.</p></div>
         <dl class="formula-list" id="formula-list"></dl>
         <p>Correctness uses all 75 assigned questions per model. A timeout or missing tool call earns no correctness credit. Saved results are checked against archived reference SQL: duplicate counts matter, column aliases and order do not, row order matters when explicitly requested, and floating-point values are rounded to 12 significant digits.</p>
         <p>Cost sums saved attempts, including continuations, with provider billing preferred per attempt. Kimi’s cost is a list-price estimate. SQL speed uses mean database execution time for timed final attempts, including timeouts; it excludes model generation and missing SQL calls.</p>
         <p>Cost and speed are relative to this run’s best value, not absolute grades. Scores describe this 75-question sample and are not an official BIRD leaderboard.</p>
         <p>Efficiency charts divide saved spend, active elapsed time, and reported completion tokens by assigned tasks. Active time includes model requests and SQL execution across saved attempts, not gaps between attempts. Completion tokens include reasoning where the provider reports it as completion usage. These metrics do not change the weighted score.</p>
-        <div class="method-links"><a href="assets/benchmark.json" download>Download benchmark JSON</a><a href="https://huggingface.co/datasets/birdsql/bird_mini_dev">BIRD Mini-Dev dataset</a></div>
+        <div class="method-links"><a class="nav-action" href="assets/benchmark.json" download>Download benchmark JSON</a><a href="https://huggingface.co/datasets/birdsql/bird_mini_dev">BIRD Mini-Dev dataset</a></div>
+        </div>
       </section>
-    </div>
   </main>
-  <footer class="shell footer">
+  <footer class="closing footer">
+    <div class="shell wrap">
     <div class="footer-note"><p>Independent evaluation using BIRD Mini-Dev data.</p><a href="#top">Back to top <span aria-hidden="true">↑</span></a></div>
     <div class="footer-links"><a class="brand" href="#top"><img src="assets/favicon.svg" width="30" height="30" alt="">QueryBench</a><a href="https://github.com/iswaryaramachandran-hub/analytics-benchmark">GitHub <span aria-hidden="true">↗</span></a></div>
+    <div class="chart-tooltip" id="chart-tooltip" role="tooltip" hidden></div>
+    </div>
   </footer>
 </body>
 </html>
