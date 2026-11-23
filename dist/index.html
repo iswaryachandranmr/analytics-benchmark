@@ -6,35 +6,47 @@
   <meta name="description" content="Compare five models across 75 BIRD Mini-Dev SQL questions by correctness, cost, and execution speed.">
   <title>SQL Benchmark / QueryBench</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=weighted-leader">
-  <script src="app.js?v=weighted-leader" defer></script>
+  <link rel="stylesheet" href="style.css?v=efficiency">
+  <script src="app.js?v=efficiency" defer></script>
 </head>
-<body>
+<body id="top">
   <a class="skip" href="#main">Skip to benchmark</a>
   <header class="masthead">
     <div class="shell masthead-inner">
       <a class="brand" href="./"><img src="assets/favicon.svg" width="30" height="30" alt="">QueryBench</a>
       <nav aria-label="Main navigation">
-        <a href="#leaderboard">Leaderboard</a><a href="#metrics">Metrics</a><a href="#explorer">Tasks</a>
+        <a href="#metrics">Metrics</a><a href="#efficiency">Efficiency</a><a href="#explorer">Tasks</a><a class="nav-action" href="#leaderboard">See the leaderboard</a>
       </nav>
-      <a class="source-link" href="https://github.com/iswaryaramachandran-hub/analytics-benchmark">GitHub <span aria-hidden="true">↗</span></a>
     </div>
   </header>
   <main class="shell" id="main">
     <section class="intro" aria-labelledby="title">
-      <div>
+      <div class="intro-copy">
         <p class="dataset"><span></span> BIRD Mini-Dev / SQLite</p>
-        <h1 id="title">SQL Benchmark</h1>
-        <p class="subtitle">Five models, 75 SQL questions. Compare correctness, cost, and execution speed.</p>
+        <h1 id="title">Which model writes better SQL?</h1>
+        <p class="subtitle">Five models answer the same 75 SQL questions. Compare correctness, cost, and execution speed.</p>
+        <a class="primary-link" href="#leaderboard">Explore the benchmark</a>
       </div>
-      <dl class="run-facts" id="run-facts" aria-label="Benchmark coverage" hidden></dl>
+      <figure class="constellation" id="constellation" hidden>
+        <div class="constellation-map">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M48 48 C32 46 32 23 17 22 M48 48 C68 49 66 22 81 19 M48 48 C46 64 35 71 23 77 M48 48 C58 64 69 69 82 74"/>
+          </svg>
+          <ol id="constellation-models" aria-label="Models ranked by weighted score"></ol>
+        </div>
+        <figcaption>Weighted scores out of 100. Select a model to see its breakdown.</figcaption>
+      </figure>
     </section>
     <p class="load-state" id="load-state" role="status">Loading benchmark results…</p>
     <div id="dashboard" hidden>
       <section class="leaderboard" id="leaderboard" aria-labelledby="leaderboard-title">
+        <div class="leaderboard-header">
+          <div class="section-heading"><h2 id="leaderboard-title">Weighted leaderboard</h2><p id="leaderboard-weight-summary"></p></div>
+          <dl class="run-facts" id="run-facts" aria-label="Benchmark coverage" hidden></dl>
+        </div>
         <div class="leaderboard-main">
           <div class="chart-heading">
-            <div><h2 id="leaderboard-title">Weighted leaderboard</h2><p>Composite score out of 100</p></div>
+            <p>Composite score out of 100</p>
             <a href="#method">How it’s scored</a>
           </div>
           <div class="axis" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
@@ -50,6 +62,32 @@
       <section class="metrics" id="metrics" aria-labelledby="metrics-title">
         <div class="section-heading"><h2 id="metrics-title">The metrics behind the score</h2><p>Bright green marks each metric winner. <span class="overall-mark" aria-hidden="true">◆</span> marks the overall leader.</p></div>
         <div class="metric-grid" id="metric-grid"></div>
+      </section>
+      <section class="efficiency" id="efficiency" aria-labelledby="efficiency-title" hidden>
+        <div class="section-heading"><h2 id="efficiency-title">Performance and efficiency</h2><p>Compare what each model needs to get through the same benchmark.</p></div>
+        <article class="chart-panel" aria-labelledby="efficiency-chart-title">
+          <div class="chart-switcher" id="efficiency-controls" role="group" aria-label="Efficiency metric"></div>
+          <div class="chart-panel-body">
+            <div class="panel-heading" aria-live="polite"><h3 id="efficiency-chart-title"></h3><p id="efficiency-description"></p></div>
+            <ol id="efficiency-rank" class="efficiency-rank"></ol>
+            <p id="efficiency-note" class="chart-note"></p>
+          </div>
+        </article>
+        <article class="chart-panel tradeoff" aria-labelledby="tradeoff-title">
+          <div class="chart-switcher" id="tradeoff-controls" role="group" aria-label="Compare correctness against"></div>
+          <div class="chart-panel-body">
+            <div class="panel-heading" aria-live="polite"><h3 id="tradeoff-title">Correctness vs. cost per task</h3><p>Look toward the upper left: more correct answers with fewer resources.</p></div>
+            <div class="tradeoff-layout">
+              <div class="scatter" id="tradeoff-plot"></div>
+              <ol class="tradeoff-models" id="tradeoff-models" aria-label="Model values"></ol>
+            </div>
+            <p class="chart-note" id="tradeoff-note"></p>
+          </div>
+        </article>
+        <article class="difficulty" aria-labelledby="difficulty-title">
+          <div class="panel-heading"><h3 id="difficulty-title">Correctness by difficulty</h3><p>Share of assigned tasks that matched the reference in each difficulty tier.</p></div>
+          <div class="difficulty-scroll"><table id="difficulty-table" aria-labelledby="difficulty-title"></table></div>
+        </article>
       </section>
       <section class="explorer" id="explorer" aria-labelledby="explorer-title">
         <div class="section-heading"><h2 id="explorer-title">Explore the tasks</h2><p>Filter by model or outcome, then open a task to compare its SQL with the reference.</p></div>
@@ -68,10 +106,14 @@
         <p>Correctness uses all 75 assigned questions per model. A timeout or missing tool call earns no correctness credit. Saved results are checked against archived reference SQL: duplicate counts matter, column aliases and order do not, row order matters when explicitly requested, and floating-point values are rounded to 12 significant digits.</p>
         <p>Cost sums saved attempts, including continuations, with provider billing preferred per attempt. Kimi’s cost is a list-price estimate. SQL speed uses mean database execution time for timed final attempts, including timeouts; it excludes model generation and missing SQL calls.</p>
         <p>Cost and speed are relative to this run’s best value, not absolute grades. Scores describe this 75-question sample and are not an official BIRD leaderboard.</p>
+        <p>Efficiency charts divide saved spend, active elapsed time, and reported completion tokens by assigned tasks. Active time includes model requests and SQL execution across saved attempts, not gaps between attempts. Completion tokens include reasoning where the provider reports it as completion usage. These metrics do not change the weighted score.</p>
         <div class="method-links"><a href="assets/benchmark.json" download>Download benchmark JSON</a><a href="https://huggingface.co/datasets/birdsql/bird_mini_dev">BIRD Mini-Dev dataset</a></div>
       </section>
     </div>
   </main>
-  <footer class="shell footer"><strong>QueryBench</strong><span>Independent evaluation using BIRD Mini-Dev data.</span></footer>
+  <footer class="shell footer">
+    <div class="footer-note"><p>Independent evaluation using BIRD Mini-Dev data.</p><a href="#top">Back to top <span aria-hidden="true">↑</span></a></div>
+    <div class="footer-links"><a class="brand" href="#top"><img src="assets/favicon.svg" width="30" height="30" alt="">QueryBench</a><a href="https://github.com/iswaryaramachandran-hub/analytics-benchmark">GitHub <span aria-hidden="true">↗</span></a></div>
+  </footer>
 </body>
 </html>

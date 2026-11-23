@@ -32,7 +32,22 @@ function renderFacts(data) {
   $("#run-facts").hidden = false;
 }
 
+function renderConstellation(models, select) {
+  for (const [index, model] of models.entries()) {
+    const node = element("li", "model-node");
+    const link = element("a", "node-label");
+    link.href = "#leaderboard";
+    link.setAttribute("aria-label", `${model.name}, ${fixed(model.score)} out of 100${index === 0 ? ", highest weighted score" : ""}. View score breakdown.`);
+    link.append(element("span", "", model.name), element("strong", "", fixed(model.score)));
+    link.addEventListener("click", () => select(model));
+    node.append(link);
+    $("#constellation-models").append(node);
+  }
+  $("#constellation").hidden = false;
+}
+
 function renderWeights(weights) {
+  $("#leaderboard-weight-summary").textContent = `${weights.correctness}% correctness, ${weights.cost}% cost, ${weights.speed}% SQL speed.`;
   for (const [key, metric] of Object.entries(metrics)) {
     const weight = element("div", `weight ${key}`);
     weight.append(element("dt", "", metric.name), element("dd", "", `${weights[key]}%`));
@@ -86,6 +101,7 @@ function renderLeaderboard(models, weights) {
     buttons.push(button);
   }
   select(models[0]);
+  return select;
 }
 
 function costColumns(models, max) {
@@ -148,6 +164,190 @@ function renderMetrics(models) {
     }
     $("#metric-grid").append(chart);
   }
+}
+
+const efficiencyMetrics = {
+  cost: {label: "Cost per task", value: (model) => model.cost / model.planned, format: (value) => `$${value.toFixed(4)}`,
+    description: "Total saved spend divided by assigned tasks. Lower is better.",
+    note: "Includes reported charges and estimates where billing was unavailable."},
+  time: {label: "Time per task", value: (model) => model.elapsed_ms == null ? null : model.elapsed_ms / model.planned / 1000,
+    format: (value) => `${value.toFixed(1)} s`, description: "Mean active elapsed time per assigned task. Lower is better.",
+    note: "Includes model requests, SQL execution, and saved retries; excludes idle time between attempts."},
+  tokens: {label: "Output tokens", value: (model) => model.completion_tokens == null ? null : model.completion_tokens / model.planned,
+    format: (value) => integer.format(Math.round(value)), description: "Mean reported completion tokens per assigned task.",
+    note: "Includes reasoning where counted by the provider. Attempts without token usage contribute no reported tokens."},
+  successfulCost: {label: "Cost per correct answer", value: (model) => model.correct ? model.cost / model.correct : null,
+    format: (value) => `$${value.toFixed(4)}`, description: "Total saved spend divided by correct answers. Lower is better.",
+    note: "Includes spending on failed tasks and mismatched results. Estimated charges are marked."},
+};
+
+function metricSwitcher(container, keys, draw) {
+  const buttons = keys.map((key) => {
+    const button = element("button", "", efficiencyMetrics[key].label);
+    button.type = "button";
+    button.addEventListener("click", () => select(key));
+    container.append(button);
+    return button;
+  });
+  function select(key) {
+    buttons.forEach((button, index) => button.setAttribute("aria-pressed", String(keys[index] === key)));
+    draw(key, efficiencyMetrics[key]);
+  }
+  select(keys[0]);
+}
+
+function metricText(key, metric, model) {
+  return metric.format(metric.value(model)) + (key === "cost" || key === "successfulCost" ? estimateMark(model) : "");
+}
+
+function drawEfficiencyRank(models, key, metric) {
+  const rows = models.filter((model) => metric.value(model) != null).sort((first, second) => metric.value(first) - metric.value(second));
+  const max = Math.max(...rows.map(metric.value), 1e-12);
+  const unmetered = models.reduce((count, model) => count + model.attempts - model.metered_attempts, 0);
+  $("#efficiency-chart-title").textContent = key === "tokens" ? "Output tokens per task" : metric.label;
+  $("#efficiency-description").textContent = metric.description;
+  $("#efficiency-note").textContent = metric.note + (key === "tokens" && unmetered ? ` Attempts without usage: ${unmetered}.` : "");
+  $("#efficiency-rank").replaceChildren(...rows.map((model, index) => {
+    const row = element("li", index === 0 ? "chart-leader" : "");
+    const track = element("div", "efficiency-track");
+    track.setAttribute("aria-hidden", "true");
+    const bar = element("span", "efficiency-bar");
+    bar.style.height = `${100 * metric.value(model) / max}%`;
+    track.append(bar);
+    row.append(element("strong", "efficiency-value", metricText(key, metric, model)), track, element("span", "efficiency-name", model.name));
+    return row;
+  }));
+}
+
+function logarithmicTicks(values) {
+  const minimum = Math.min(...values);
+  const maximum = Math.max(...values);
+  const start = Math.floor(Math.log10(minimum));
+  const end = Math.ceil(Math.log10(maximum));
+  const ticks = [];
+  for (let exponent = start; exponent <= end; exponent += 1) {
+    for (const multiplier of [1, 2, 5]) ticks.push(multiplier * 10 ** exponent);
+  }
+  const first = ticks.findLastIndex((tick) => tick <= minimum);
+  const last = ticks.findIndex((tick) => tick >= maximum);
+  return ticks.slice(first, Math.max(last, first + 1) + 1);
+}
+
+function drawTradeoff(models, key, metric) {
+  const ranked = models.filter((model) => metric.value(model) > 0).sort((first, second) => metric.value(first) - metric.value(second) || accuracy(second) - accuracy(first));
+  const ticks = logarithmicTicks(ranked.map(metric.value));
+  const low = Math.log10(ticks[0]);
+  const high = Math.log10(ticks.at(-1));
+  const bottom = Math.max(0, Math.floor((Math.min(...ranked.map(accuracy)) - 4) / 10) * 10);
+  const x = (value) => 3 + 94 * (Math.log10(value) - low) / (high - low);
+  const y = (value) => 5 + 90 * (100 - value) / (100 - bottom);
+  const scatter = element("div", "scatter-inner");
+  const points = new Map();
+  const labels = new Map();
+  const tradeoffTitle = key === "tokens" ? "output tokens per task" : metric.label.toLowerCase();
+  $("#tradeoff-title").textContent = `Correctness vs. ${tradeoffTitle}`;
+
+  function gridline(kind, position, text) {
+    const line = element("div", `scatter-grid ${kind}`);
+    line.style.setProperty("--position", `${position}%`);
+    line.setAttribute("aria-hidden", "true");
+    line.append(element("span", "", text));
+    scatter.append(line);
+  }
+
+  for (let value = bottom; value <= 100; value += 10) gridline("horizontal", y(value), `${value}%`);
+  ticks.forEach((value) => gridline("vertical", x(value), metric.format(value)));
+
+  let bestAccuracy = -Infinity;
+  const frontier = ranked.filter((model) => {
+    if (accuracy(model) <= bestAccuracy) return false;
+    bestAccuracy = accuracy(model);
+    return true;
+  });
+  const namespace = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(namespace, "svg");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(namespace, "polyline");
+  path.setAttribute("points", frontier.map((model) => `${x(metric.value(model))},${y(accuracy(model))}`).join(" "));
+  svg.append(path);
+  scatter.append(svg);
+
+  function select(model) {
+    for (const [key, point] of points) point.classList.toggle("selected", key === model.key);
+    for (const [key, label] of labels) label.setAttribute("aria-pressed", String(key === model.key));
+  }
+
+  const items = models.flatMap((model, index) => {
+    if (!(metric.value(model) > 0)) return [];
+    const marker = String(index + 1);
+    const point = element("span", `scatter-point${index === 0 ? " chart-leader" : ""}`, marker);
+    point.style.left = `${x(metric.value(model))}%`;
+    point.style.top = `${y(accuracy(model))}%`;
+    point.setAttribute("aria-hidden", "true");
+    point.title = model.name;
+    point.addEventListener("click", () => select(model));
+    points.set(model.key, point);
+    scatter.append(point);
+    const item = element("li");
+    const label = element("button", "tradeoff-model");
+    label.type = "button";
+    const copy = element("span");
+    copy.append(element("strong", "", model.name), element("small", "", `${fixed(accuracy(model))}% correct / ${metricText(key, metric, model)}`));
+    label.append(element("span", "tradeoff-index", marker), copy);
+    label.addEventListener("click", () => select(model));
+    labels.set(model.key, label);
+    item.append(label);
+    return [item];
+  });
+  $("#tradeoff-plot").replaceChildren(scatter);
+  $("#tradeoff-models").replaceChildren(...items);
+  const frontierNote = frontier.length === 1
+    ? `${frontier[0].name} leads on both axes.`
+    : "The dashed line connects models that cannot be improved on one measure without giving up ground on the other.";
+  $("#tradeoff-note").textContent = `Horizontal axis uses a log scale. ${frontierNote} Bright green marks the weighted leader.`;
+  select(models.find((model) => points.has(model.key)));
+}
+
+function drawDifficulty(models, tasks) {
+  const tiers = ["simple", "moderate", "hard"];
+  const table = $("#difficulty-table");
+  const heading = table.createTHead().insertRow();
+  for (const title of ["Model", "Simple", "Moderate", "Hard"]) {
+    const cell = element("th", "", title);
+    cell.scope = "col";
+    heading.append(cell);
+  }
+  const groups = models.map((model) => tiers.map((tier) => {
+    const assigned = tasks.filter((task) => task.model === model.key && task.difficulty === tier);
+    return {planned: assigned.length, passed: assigned.filter((task) => task.score_percent === 100).length};
+  }));
+  const best = tiers.map((_, index) => Math.max(...groups.map((group) => group[index].passed / (group[index].planned || 1))));
+  const body = table.createTBody();
+  for (const [index, model] of models.entries()) {
+    const row = body.insertRow();
+    const name = element("th", "", model.name);
+    name.scope = "row";
+    row.append(name);
+    groups[index].forEach(({passed, planned}, tier) => {
+      const cell = row.insertCell();
+      if (!planned) { cell.textContent = "—"; return; }
+      const ratio = passed / planned;
+      if (ratio === best[tier]) cell.classList.add("chart-leader");
+      cell.style.setProperty("--heat", `${Math.round(5 + 30 * ratio)}%`);
+      cell.append(element("strong", "", `${integer.format(100 * ratio)}%`), element("small", "", `${passed}/${planned}`));
+    });
+  }
+}
+
+function renderEfficiency(models, tasks) {
+  if (!models.every((model) => "completion_tokens" in model)) return;
+  metricSwitcher($("#efficiency-controls"), Object.keys(efficiencyMetrics), (key, metric) => drawEfficiencyRank(models, key, metric));
+  const tradeoffs = ["cost", "time", "tokens"].filter((key) => models.some((model) => efficiencyMetrics[key].value(model) > 0));
+  metricSwitcher($("#tradeoff-controls"), tradeoffs, (key, metric) => drawTradeoff(models, key, metric));
+  drawDifficulty(models, tasks);
+  $("#efficiency").hidden = false;
 }
 
 function taskOutcome(task) {
@@ -221,17 +421,20 @@ function renderExplorer({models, tasks}) {
 
 async function load() {
   try {
-    const response = await fetch("assets/benchmark.json");
+    const response = await fetch("assets/benchmark.json?v=efficiency");
     if (!response.ok) throw new Error(`Benchmark data returned HTTP ${response.status}`);
     const data = await response.json();
     data.models.sort((first, second) => second.score - first.score);
     renderFacts(data);
     renderWeights(data.weights);
-    renderLeaderboard(data.models, data.weights);
+    const selectModel = renderLeaderboard(data.models, data.weights);
+    renderConstellation(data.models, selectModel);
     renderMetrics(data.models);
+    renderEfficiency(data.models, data.tasks);
     renderExplorer(data);
     $("#dashboard").hidden = false;
     $("#load-state").hidden = true;
+    if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
   } catch (error) {
     console.error(error);
     $("#load-state").textContent = "Benchmark results could not load. Reload the page to try again.";

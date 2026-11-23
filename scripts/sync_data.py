@@ -19,13 +19,16 @@ def export(path, run_id):
                 SELECT model_key, SUM(COALESCE(cost_usd, estimated_cost_usd)) cost,
                        SUM(cost_usd) reported_cost,
                        SUM(CASE WHEN cost_usd IS NULL THEN estimated_cost_usd END) estimated_cost,
-                       SUM(total_tokens) tokens
+                       SUM(total_tokens) tokens, SUM(completion_tokens) completion_tokens,
+                       COUNT(completion_tokens) metered_attempts, COUNT(*) attempts,
+                       CASE WHEN COUNT(total_elapsed_ms) = COUNT(*) THEN SUM(total_elapsed_ms) END elapsed_ms
                 FROM attempts WHERE run_id = ? GROUP BY model_key
             )
             SELECT m.model_key key, m.display_name name, COUNT(*) planned,
                    SUM(m.sql_executed = 1) executed, COUNT(r.score_percent) reviewed,
                    SUM(r.score_percent = 100) correct, AVG(m.sql_execution_ms) avg_sql_ms,
-                   s.cost, s.reported_cost, s.estimated_cost, s.tokens
+                   s.cost, s.reported_cost, s.estimated_cost, s.tokens, s.completion_tokens,
+                   s.metered_attempts, s.attempts, s.elapsed_ms
             FROM benchmark_metrics m JOIN spend s USING(model_key)
             LEFT JOIN correctness_reviews r USING(attempt_id)
             WHERE m.run_id = ? GROUP BY m.model_key ORDER BY m.model_key

@@ -2,6 +2,8 @@
 
 QueryBench compares five models on a single, independent 75-question SQL benchmark. The static site shows the weighted leaderboard, each raw metric, and a searchable task explorer with submitted and reference SQL. It publishes through the existing GitHub Pages workflow.
 
+The efficiency section compares cost, active time, and reported output tokens per assigned task, plus cost per correct answer. It also plots correctness against each per-task resource measure and shows accuracy by difficulty. These views use saved SQLite measurements and are separate from the weighted score.
+
 ## Scoring
 
 Each model earns up to 100 points:
