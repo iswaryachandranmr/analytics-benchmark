@@ -1,144 +1,197 @@
-'use strict';
+"use strict";
 
 const $ = (selector) => document.querySelector(selector);
-const number = new Intl.NumberFormat('en-US');
-const percent = (value) => `${(value * 100).toFixed(value === 1 ? 0 : 1)}%`;
-const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-let benchmark;
-let activeFilter = 'all';
-let selectedRun;
+const integer = new Intl.NumberFormat("en-US");
+const currency = new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"});
+const fixed = (number) => number.toFixed(2);
+const accuracy = (model) => 100 * model.correct / model.planned;
+const milliseconds = (number) => `${integer.format(Math.round(number * 10) / 10)} ms`;
+const estimateMark = (model) => model.estimated_cost !== null ? " est." : "";
 
-async function initialize() {
-  try {
-    const response = await fetch('./assets/benchmark.json');
-    if (!response.ok) throw new Error(`Results could not be loaded (${response.status}).`);
-    benchmark = await response.json();
-    const runs = benchmark.runs;
-    $('#nav-models').textContent = runs.length;
-    $('#model-count').textContent = `${runs.length} models`;
-    $('#stat-models').textContent = runs.length;
-    $('#stat-questions').textContent = benchmark.questions.length;
-    const attempts = runs.reduce((sum, run) => sum + run.task_count, 0);
-    const executions = runs.reduce((sum, run) => sum + run.execution_success_count, 0);
-    $('#stat-queries').textContent = number.format(attempts);
-    $('#stat-execution').textContent = `${executions} completed without errors`;
-    $('#stat-accuracy').textContent = percent(runs.reduce((sum, run) => sum + run.accuracy, 0) / runs.length);
-    $('#updated-label').textContent = `Updated ${new Intl.DateTimeFormat('en-US', {month:'long',day:'numeric',year:'numeric',timeZone:'UTC'}).format(new Date(benchmark.updated + 'T12:00:00Z'))}`;
-    renderRankings();
-    renderHeatmap();
-    renderTokens();
-    connectControls();
-  } catch (error) {
-    $('#rankings-body').innerHTML = '<tr><td colspan="7" class="empty-row">Results are unavailable. Please refresh the page.</td></tr>';
-    $('#error-banner').hidden = false;
-    $('#error-banner').textContent = error.message;
+const metrics = {
+  correctness: {name: "Correctness", note: "Reference matches / assigned tasks", rule: "correct tasks ÷ assigned tasks", value: accuracy, format: (model) => `${fixed(accuracy(model))}%`, high: true},
+  cost: {name: "Cost", note: "Total spend in USD · lower is better", rule: "lowest model spend ÷ model spend", value: (model) => model.cost, format: (model) => `${currency.format(model.cost)}${estimateMark(model)}`},
+  speed: {name: "SQL speed", note: "Mean database time · lower is better", rule: "fastest mean SQL time ÷ model mean SQL time", value: (model) => model.avg_sql_ms, format: (model) => milliseconds(model.avg_sql_ms)},
+};
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function renderFacts(data) {
+  const facts = [["Models evaluated", data.models.length], ["Assigned tasks", data.tasks.length],
+    ["Results scored", data.models.reduce((total, model) => total + model.reviewed, 0)]];
+  for (const [label, value] of facts) {
+    const group = element("div");
+    group.append(element("dt", "", label), element("dd", "", integer.format(value)));
+    $("#run-facts").append(group);
+  }
+  $("#run-facts").hidden = false;
+}
+
+function renderWeights(weights) {
+  for (const [key, metric] of Object.entries(metrics)) {
+    const weight = element("div", `weight ${key}`);
+    weight.append(element("dt", "", metric.name), element("dd", "", `${weights[key]}%`));
+    $("#weight-list").append(weight);
+    const rule = element("div", key);
+    rule.append(element("dt", "", `${metric.name} · ${weights[key]} pts`), element("dd", "", `${weights[key]} × (${metric.rule})`));
+    $("#formula-list").append(rule);
   }
 }
 
-function rankedRuns() {
-  return [...benchmark.runs].sort((a, b) => b.accuracy - a.accuracy || a.model.localeCompare(b.model));
+function renderLeaderboard(models, weights) {
+  const buttons = [];
+  function select(model) {
+    for (const [index, button] of buttons.entries()) {
+      button.setAttribute("aria-pressed", String(models[index] === model));
+    }
+    const detail = element("div", "detail-model");
+    detail.append(element("strong", "", model.name), element("span", "", `${model.correct} correct / ${model.planned} tasks`));
+    const contributions = Object.entries(metrics).map(([key, metric]) => {
+      const group = element("div", `detail-metric ${key}`);
+      group.append(element("span", "", `${metric.name} · ${metric.format(model)}`),
+        element("strong", "", `${fixed(model.points[key])} / ${weights[key]} pts`));
+      return group;
+    });
+    $("#score-detail").replaceChildren(detail, ...contributions);
+  }
+
+  for (const [index, model] of models.entries()) {
+    const item = element("li");
+    const button = element("button", "score-row");
+    const modelName = element("span", "score-model");
+    modelName.append(element("span", "rank", String(index + 1).padStart(2, "0")), element("span", "", model.name));
+    const track = element("span", "score-track");
+    track.setAttribute("aria-hidden", "true");
+    for (const [key, points] of Object.entries(model.points)) {
+      const segment = element("span", `segment ${key}`);
+      segment.style.width = `${points}%`;
+      track.append(segment);
+    }
+    button.type = "button";
+    button.setAttribute("aria-controls", "score-detail");
+    button.setAttribute("aria-label", `${model.name}: ${fixed(model.score)} out of 100, rank ${index + 1}`);
+    button.addEventListener("click", () => select(model));
+    button.append(modelName, track, element("strong", "score-total", fixed(model.score)));
+    item.append(button);
+    $("#score-chart").append(item);
+    buttons.push(button);
+  }
+  select(models[0]);
 }
 
-function renderRankings() {
-  const search = $('#model-search').value.trim().toLocaleLowerCase();
-  let visible = benchmark.runs.filter((run) => run.model.toLocaleLowerCase().includes(search) && (activeFilter !== 'perfect' || run.correct_count === run.task_count));
-  const sort = $('#sort-select').value;
-  visible.sort(sort === 'tokens' ? (a, b) => a.total_tokens_reported - b.total_tokens_reported : sort === 'name' ? (a, b) => a.model.localeCompare(b.model) : (a, b) => b.accuracy - a.accuracy || a.model.localeCompare(b.model));
-  $('#rankings-body').innerHTML = visible.length ? visible.map((run) => {
-    const rank = 1 + benchmark.runs.filter((other) => other.accuracy > run.accuracy).length;
-    const index = benchmark.runs.indexOf(run);
-    return `<tr><td class="rank-cell"><span class="rank-value">${String(rank).padStart(2,'0')}</span></td><td><div class="model-cell"><span class="model-icon model-${index % 4}" aria-hidden="true">${escapeHTML(run.model[0])}</span><div><strong>${escapeHTML(run.model)}</strong><small>${escapeHTML(run.provider)} · SQLite</small></div></div></td><td class="accuracy-cell"><span class="accuracy-label">${percent(run.accuracy)}</span><div class="accuracy-meter ${run.accuracy < 1 ? 'partial' : ''}" aria-hidden="true"><span style="width:${run.accuracy * 100}%"></span></div></td><td class="number">${run.correct_count}<span class="muted"> / ${run.task_count}</span></td><td class="number muted">${number.format(run.total_tokens_reported)}</td><td class="number muted">${run.cost_usd_reported == null ? 'Not supplied' : '$' + run.cost_usd_reported.toFixed(2)}</td><td><button class="run-button" data-run="${escapeHTML(run.run_id)}" aria-label="Inspect ${escapeHTML(run.model)}">View <span aria-hidden="true">↗</span></button></td></tr>`;
-  }).join('') : '<tr><td colspan="7" class="empty-row">No models match these filters. Try another name or select All models.</td></tr>';
-  $('#visible-count').textContent = `Showing ${visible.length} of ${benchmark.runs.length} models`;
+function renderMetrics(models) {
+  for (const [key, metric] of Object.entries(metrics)) {
+    const ordered = [...models].sort((first, second) => (metric.value(first) - metric.value(second)) * (metric.high ? -1 : 1));
+    const max = metric.high ? 100 : metric.value(ordered[ordered.length - 1]);
+    const chart = element("article", `metric-chart ${key}`);
+    const list = element("ol");
+    for (const model of ordered) {
+      const row = element("li");
+      const label = element("div", "metric-label");
+      label.append(element("span", "", model.name), element("strong", "", metric.format(model)));
+      const track = element("div", "metric-track");
+      track.setAttribute("aria-hidden", "true");
+      const fill = element("div", "metric-fill");
+      fill.style.width = `${100 * metric.value(model) / max}%`;
+      track.append(fill);
+      row.append(label, track);
+      list.append(row);
+    }
+    chart.append(element("h3", "", metric.name), element("p", "", metric.note), list);
+    $("#metric-grid").append(chart);
+  }
 }
 
-function renderHeatmap() {
-  const questions = benchmark.questions;
-  $('#heatmap').innerHTML = `<table class="heatmap"><thead><tr><th scope="col">MODEL</th>${questions.map((question) => `<th scope="col" title="${escapeHTML(question.title)}">Q${question.question_id}</th>`).join('')}</tr></thead><tbody>${rankedRuns().map((run) => `<tr><td>${escapeHTML(run.model)}</td>${questions.map((question) => {
-    const result = run.results.find((item) => item.question_id === question.question_id);
-    return `<td><button class="heatmap-button ${result.correct ? '' : 'failed'}" data-run="${escapeHTML(run.run_id)}" data-question="${question.question_id}" aria-label="${escapeHTML(run.model)}, question ${question.question_id}: ${result.correct ? 'pass' : 'fail'}. Inspect query.">${result.correct ? '✓' : '×'}</button></td>`;
-  }).join('')}</tr>`).join('')}</tbody></table>`;
-  $('#question-key').innerHTML = questions.map((question) => `<div><b>Q${question.question_id}</b>${escapeHTML(question.title)}</div>`).join('');
+function taskOutcome(task) {
+  if (task.score_percent === 100) return ["match", "Match"];
+  if (task.score_percent === 0) return ["mismatch", "Mismatch"];
+  if (task.status === "sql_error") return ["failed", "SQL timeout"];
+  if (task.status === "tool_format_error") return ["failed", "Missing tool call"];
+  return ["failed", "Not executed"];
 }
 
-function renderTokens() {
-  const maximum = Math.max(...benchmark.runs.map((run) => run.total_tokens_reported));
-  const categories = [['input_tokens','input-color','Input'],['reasoning_tokens','reasoning-color','Reasoning'],['output_tokens','output-color','Output'],['cache_read_tokens','cache-color','Cache read']];
-  $('#token-chart').innerHTML = rankedRuns().map((run) => `<div class="token-row"><div class="token-row-top"><span>${escapeHTML(run.model.replace(/ Free$/, ''))}</span><span>${number.format(run.total_tokens_reported)}</span></div><div class="token-bar-track"><div class="token-bar" style="width:${run.total_tokens_reported / maximum * 100}%" role="img" aria-label="${escapeHTML(run.model)}: ${categories.map(([key,,label]) => `${label} ${number.format(run[key])}`).join(', ')} tokens">${categories.map(([key, color, label]) => `<span class="${color}" style="width:${run[key] / run.total_tokens_reported * 100}%" title="${label}: ${number.format(run[key])} tokens"></span>`).join('')}</div></div></div>`).join('');
-  const allZero = benchmark.runs.every((run) => run.cost_usd_reported === 0);
-  $('#token-usage .panel-footnote').textContent = `These are session totals, not per-query costs. ${allZero ? `All ${benchmark.runs.length} sessions reported $0.00. ` : ''}Response times were not supplied.`;
+function renderTask(task, model) {
+  const [status, label] = taskOutcome(task);
+  const details = element("details", "task");
+  const summary = element("summary");
+  const description = element("div", "task-description");
+  description.append(element("span", "task-meta", `#${task.question_id} / ${task.database} / ${task.difficulty}`), element("strong", "", task.question));
+  summary.append(description, element("span", "task-model", model.name), element("span", `outcome ${status}`, label));
+  const panel = element("div", "task-panel");
+  const stats = [];
+  if (task.comparison) stats.push(task.comparison.replaceAll("_", " "));
+  if (task.row_count !== null) stats.push(`${integer.format(task.row_count)} rows`);
+  if (task.sql_ms !== null) stats.push(milliseconds(task.sql_ms));
+  if (stats.length) panel.append(element("p", "task-meta", stats.join(" / ")));
+  const queries = element("div", "queries");
+  for (const [heading, query, missing] of [["Submitted SQL", task.sql, "No SQL was submitted."],
+    ["Reference SQL", task.reference_sql, "Reference comparison is unavailable for this task."]]) {
+    const column = element("div");
+    column.append(element("h4", "", heading));
+    if (query) {
+      const pre = element("pre");
+      pre.append(element("code", "", query));
+      column.append(pre);
+    } else column.append(element("p", "", missing));
+    queries.append(column);
+  }
+  panel.append(queries);
+  details.append(summary, panel);
+  return details;
 }
 
-function connectControls() {
-  $('#model-search').addEventListener('input', renderRankings);
-  $('#sort-select').addEventListener('change', renderRankings);
-  document.querySelectorAll('[data-filter]').forEach((button) => button.addEventListener('click', () => {
-    activeFilter = button.dataset.filter;
-    document.querySelectorAll('[data-filter]').forEach((item) => { item.classList.toggle('selected', item === button); item.setAttribute('aria-pressed', String(item === button)); });
-    renderRankings();
-  }));
-  document.addEventListener('click', (event) => {
-    const button = event.target.closest('button[data-run]');
-    if (button) openRun(button.dataset.run, Number(button.dataset.question) || benchmark.questions[0].question_id);
-  });
-  $('#question-select').addEventListener('change', () => renderQuestion(Number($('#question-select').value)));
-  $('#close-dialog').addEventListener('click', () => $('#run-dialog').close());
-  $('#run-dialog').addEventListener('click', (event) => {
-    if (event.target !== $('#run-dialog')) return;
-    const bounds = event.target.getBoundingClientRect();
-    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) event.target.close();
-  });
-  $('#copy-sql').addEventListener('click', async () => {
-    try {
-      const result = selectedRun.results.find((item) => item.question_id === Number($('#question-select').value));
-      await navigator.clipboard.writeText(result.predicted_sql);
-      $('#copy-sql').textContent = 'Copied';
-      setTimeout(() => { $('#copy-sql').textContent = 'Copy SQL'; }, 1800);
-    } catch { $('#copy-sql').textContent = 'Select SQL to copy'; }
-  });
-  const navigation = [...document.querySelectorAll('.nav-item')];
-  const observer = new IntersectionObserver((entries) => {
-    const current = entries.filter((entry) => entry.isIntersecting).sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
-    if (current) navigation.forEach((link) => link.classList.toggle('active', link.hash === '#' + current.target.id));
-  }, {rootMargin:'-5% 0px -45% 0px',threshold:[0,0.2,0.5]});
-  document.querySelectorAll('.anchor-section').forEach((section) => observer.observe(section));
+function renderExplorer({models, tasks}) {
+  const names = new Map(models.map((model) => [model.key, model]));
+  const controls = $("#filters");
+  const filter = controls.elements;
+  const size = 10;
+  let page = 1;
+  for (const model of models) $("#model-filter").add(new Option(model.name, model.key));
+
+  function draw() {
+    const query = filter.query.value.trim().toLowerCase();
+    const found = tasks.filter((task) => (!filter.model.value || task.model === filter.model.value)
+      && (!filter.outcome.value || taskOutcome(task)[0] === filter.outcome.value)
+      && `${task.question_id} #${task.question_id} ${task.database} ${task.question}`.toLowerCase().includes(query));
+    const pages = Math.max(1, Math.ceil(found.length / size));
+    const start = (page - 1) * size;
+    const current = found.slice(start, start + size);
+    $("#task-count").textContent = found.length ? `Showing ${start + 1}–${start + current.length} of ${found.length} tasks` : "No tasks match. Try another search or change the filters.";
+    $("#task-list").replaceChildren(...current.map((task) => renderTask(task, names.get(task.model))));
+    $("#pagination").hidden = pages <= 1;
+    $("#page-number").textContent = `Page ${page} of ${pages}`;
+    $("#prev").disabled = page === 1;
+    $("#next").disabled = page === pages;
+  }
+
+  controls.addEventListener("submit", (event) => event.preventDefault());
+  controls.addEventListener("input", () => { page = 1; draw(); });
+  $("#prev").addEventListener("click", () => { page -= 1; draw(); });
+  $("#next").addEventListener("click", () => { page += 1; draw(); });
+  draw();
 }
 
-function openRun(id, questionId) {
-  selectedRun = benchmark.runs.find((run) => run.run_id === id);
-  if (!selectedRun) return;
-  $('#dialog-title').textContent = selectedRun.model;
-  $('#dialog-subtitle').textContent = `${selectedRun.correct_count} of ${selectedRun.task_count} correct · ${number.format(selectedRun.total_tokens_reported)} reported tokens · ${selectedRun.provider}`;
-  $('#question-select').innerHTML = benchmark.questions.map((question) => `<option value="${question.question_id}">Q${question.question_id} · ${escapeHTML(question.title)}</option>`).join('');
-  $('#question-select').value = questionId;
-  renderQuestion(questionId);
-  $('#run-dialog').showModal();
-  $('#run-dialog').scrollTop = 0;
+async function load() {
+  try {
+    const response = await fetch("assets/benchmark.json");
+    if (!response.ok) throw new Error(`Benchmark data returned HTTP ${response.status}`);
+    const data = await response.json();
+    renderFacts(data);
+    renderWeights(data.weights);
+    renderLeaderboard(data.models, data.weights);
+    renderMetrics(data.models);
+    renderExplorer(data);
+    $("#dashboard").hidden = false;
+    $("#load-state").hidden = true;
+  } catch (error) {
+    console.error(error);
+    $("#load-state").textContent = "Benchmark results could not load. Reload the page to try again.";
+  }
 }
 
-function renderQuestion(id) {
-  const question = benchmark.questions.find((item) => item.question_id === id);
-  const result = selectedRun.results.find((item) => item.question_id === id);
-  $('#question-status').textContent = result.correct ? 'Passed' : 'Failed';
-  $('#question-status').classList.toggle('fail', !result.correct);
-  $('#question-category').textContent = `${question.db_id} / ${question.difficulty}`;
-  $('#question-text').textContent = question.question;
-  $('#question-evidence').textContent = question.evidence ? `Evidence: ${question.evidence}` : 'No additional evidence supplied.';
-  $('#failure-explanation').hidden = result.correct || !result.failure_explanation;
-  $('#failure-explanation').textContent = result.failure_explanation || '';
-  $('#submitted-sql').textContent = result.predicted_sql.trim();
-  $('#reference-sql').textContent = result.reference_sql.trim();
-  $('#copy-sql').textContent = 'Copy SQL';
-  $('#submitted-result-heading').textContent = `Submitted output · ${result.prediction.row_count} rows`;
-  $('#reference-result-heading').textContent = `Reference output · ${result.reference.row_count} rows`;
-  $('#submitted-output').innerHTML = outputTable(result.prediction);
-  $('#reference-output').innerHTML = outputTable(result.reference);
-}
-
-function outputTable(result) {
-  if (result.error) return `<p>${escapeHTML(result.error)}</p>`;
-  if (!result.rows.length) return '<p>No rows returned.</p>';
-  return `<table><thead><tr>${result.columns.map((column) => `<th scope="col">${escapeHTML(column)}</th>`).join('')}</tr></thead><tbody>${result.rows.map((row) => `<tr>${row.map((value) => `<td>${value === null ? '<span class="muted">NULL</span>' : escapeHTML(value)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-}
-
-initialize();
+load();
