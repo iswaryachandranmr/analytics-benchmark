@@ -115,11 +115,96 @@ function renderWeights(weights) {
   }
 }
 
+function createModelInspector(model, sequence) {
+  const inspector = element("div", "model-inspector");
+  const provider = model.key.startsWith("claude") ? "anthropic" : model.key.startsWith("gpt") ? "openai" : model.key.startsWith("gemini") ? "googlegemini" : "kimi";
+  const header = element("div", "model-provider");
+  const icon = element("img", "provider-icon");
+  icon.src = `assets/${provider}.svg`;
+  icon.alt = "";
+  icon.width = 24;
+  icon.height = 24;
+  header.append(icon, element("strong", "", model.name));
+
+  const donut = element("div", "model-donut");
+  const namespace = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(namespace, "svg");
+  svg.setAttribute("viewBox", "0 0 120 120");
+  svg.setAttribute("aria-hidden", "true");
+  function circle(className) {
+    const node = document.createElementNS(namespace, "circle");
+    node.setAttribute("cx", "60");
+    node.setAttribute("cy", "60");
+    node.setAttribute("r", "49");
+    node.setAttribute("pathLength", "100");
+    node.setAttribute("fill", "none");
+    node.setAttribute("stroke-width", "8");
+    node.setAttribute("transform", "rotate(-90 60 60)");
+    node.setAttribute("class", className);
+    return node;
+  }
+  const track = circle("model-ring-track");
+  const definitions = document.createElementNS(namespace, "defs");
+  const mask = document.createElementNS(namespace, "mask");
+  const maskId = `model-ring-${sequence}`;
+  mask.setAttribute("id", maskId);
+  mask.setAttribute("maskUnits", "userSpaceOnUse");
+  mask.setAttribute("x", "0");
+  mask.setAttribute("y", "0");
+  mask.setAttribute("width", "120");
+  mask.setAttribute("height", "120");
+  const sweep = circle("model-ring-sweep");
+  sweep.setAttribute("stroke", "white");
+  sweep.setAttribute("stroke-width", "10");
+  sweep.setAttribute("stroke-dasharray", `${model.score} ${100 - model.score}`);
+  sweep.style.setProperty("--ring-score", model.score);
+  mask.append(sweep);
+  definitions.append(mask);
+  const segments = document.createElementNS(namespace, "g");
+  segments.setAttribute("mask", `url(#${maskId})`);
+  const contributions = element("dl", "model-contributions");
+  let offset = 0;
+  for (const [key, metric] of Object.entries(metrics)) {
+    const portion = model.points[key];
+    const segment = circle(`model-ring-segment ${key}`);
+    segment.setAttribute("stroke-dasharray", `${portion} ${100 - portion}`);
+    segment.setAttribute("stroke-dashoffset", String(-offset));
+    segments.append(segment);
+    offset += portion;
+    const item = element("div", key);
+    item.append(element("dt", "", key === "correctness" ? "Accuracy" : metric.name), element("dd", "", `${fixed(model.points[key])} pts`));
+    contributions.append(item);
+  }
+  svg.append(definitions, track, segments);
+  const center = element("div", "model-ring-center");
+  center.append(element("strong", "", fixed(model.score)), element("span", "", "out of 100"));
+  donut.append(svg, center);
+  inspector.append(header, donut, contributions);
+  return inspector;
+}
+
 function renderLeaderboard(models, weights) {
   const buttons = [];
+  let viewerSequence = 0;
+  const viewer = $("#model-viewer");
   $("#winning-score").textContent = fixed(models[0].score);
   $("#winning-model").textContent = models[0].name;
-  function select(model) {
+  async function inspect(model) {
+    const sequence = ++viewerSequence;
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const previous = viewer.firstElementChild;
+    if (!reducedMotion && previous) {
+      previous.getAnimations().forEach((animation) => animation.cancel());
+      await previous.animate([
+        { opacity: 1, transform: "translateY(0) scale(1)" },
+        { opacity: 0, transform: "translateY(-12px) scale(.94)" },
+      ], { duration: 160, easing: "ease-in", fill: "forwards" }).finished.catch(() => {});
+    }
+    if (sequence !== viewerSequence) return;
+    viewer.setAttribute("aria-label", `${model.name} score breakdown`);
+    viewer.replaceChildren(createModelInspector(model, sequence));
+  }
+  function select(model, showViewer = false) {
     for (const [index, button] of buttons.entries()) {
       button.setAttribute("aria-pressed", String(models[index] === model));
     }
@@ -132,6 +217,7 @@ function renderLeaderboard(models, weights) {
       return group;
     });
     $("#score-detail").replaceChildren(detail, ...contributions);
+    if (showViewer) inspect(model);
   }
 
   for (const [index, model] of models.entries()) {
@@ -155,9 +241,9 @@ function renderLeaderboard(models, weights) {
     }
     track.append(fill);
     button.type = "button";
-    button.setAttribute("aria-controls", "score-detail");
+    button.setAttribute("aria-controls", "score-detail model-viewer");
     button.setAttribute("aria-label", `${model.name}: ${fixed(model.score)} out of 100, ${isWinner ? "highest weighted score, rank 1" : `rank ${index + 1}`}`);
-    button.addEventListener("click", () => select(model));
+    button.addEventListener("click", () => select(model, true));
     bindChartDetail(button, `${model.name} · ${fixed(model.score)} / 100`,
       Object.entries(metrics).map(([key, metric]) => `${metric.name}: ${metric.format(model)} · ${fixed(model.points[key])} / ${weights[key]} pts`));
     button.append(modelName, track, element("strong", "score-total", fixed(model.score)));
@@ -185,6 +271,35 @@ function costColumns(models, max) {
   return plot;
 }
 
+function metricPlot(key, models, max) {
+  if (key === "cost") return costColumns(models, max);
+  const plot = element("div", `metric-plot ${key}-plot`);
+  for (const [index, model] of models.entries()) {
+    const item = element("div", `metric-plot-item${index === 0 ? " chart-leader" : ""}`);
+    const number = element("span", "metric-index", String(index + 1));
+    if (key === "correctness") {
+      const ring = element("span", "accuracy-ring");
+      ring.style.setProperty("--value", `${accuracy(model)}%`);
+      item.append(ring, number);
+    } else {
+      const track = element("div", "speed-track");
+      const dot = element("span", "speed-dot");
+      dot.style.left = `${100 * model.avg_sql_ms / max}%`;
+      track.append(dot);
+      item.append(number, track);
+    }
+    bindChartDetail(item, model.name, [`${metrics[key].name}: ${metrics[key].format(model)}`], true);
+    plot.append(item);
+  }
+  if (key === "speed") {
+    const scale = element("div", "speed-axis");
+    scale.setAttribute("aria-hidden", "true");
+    scale.append(element("span", "", "0 ms"), element("span", "", milliseconds(max)));
+    plot.append(scale);
+  }
+  return plot;
+}
+
 function renderMetrics(models) {
   for (const [key, metric] of Object.entries(metrics)) {
     const ordered = [...models].sort((first, second) => (metric.value(first) - metric.value(second)) * (metric.high ? -1 : 1));
@@ -193,7 +308,7 @@ function renderMetrics(models) {
     const body = element("div", "metric-body");
     const list = element("ol");
     chart.append(element("h3", "", metric.name), element("p", "", metric.note));
-    if (key === "cost") body.append(costColumns(ordered, max));
+    body.append(metricPlot(key, ordered, max));
     for (const [index, model] of ordered.entries()) {
       const row = element("li", index === 0 ? "chart-leader" : "");
       const context = key === "correctness" ? `${model.correct} correct out of ${model.planned} tasks`
@@ -201,10 +316,9 @@ function renderMetrics(models) {
       bindChartDetail(row, model.name, [`${metric.name}: ${metric.format(model)}`, context], true);
       const label = element("div", "metric-label");
       const name = element("span", "metric-name");
-      const mark = element("span", key === "correctness" ? "accuracy-ring" : "metric-index", key === "cost" ? String(index + 1) : "");
+      const mark = element("span", "metric-index", String(index + 1));
       mark.setAttribute("aria-hidden", "true");
-      if (key === "correctness") mark.style.setProperty("--value", `${accuracy(model)}%`);
-      if (key !== "speed") name.append(mark);
+      name.append(mark);
       name.append(element("span", "", model.name));
       if (model.key === models[0].key) {
         const overall = element("span", "overall-mark", "◆");
@@ -215,23 +329,9 @@ function renderMetrics(models) {
       }
       label.append(name, element("strong", "", metric.format(model)));
       row.append(label);
-      if (key === "speed") {
-        const track = element("div", "speed-track");
-        track.setAttribute("aria-hidden", "true");
-        const dot = element("span", "speed-dot");
-        dot.style.left = `${100 * metric.value(model) / max}%`;
-        track.append(dot);
-        row.append(track);
-      }
       list.append(row);
     }
     body.append(list);
-    if (key === "speed") {
-      const scale = element("div", "speed-axis");
-      scale.setAttribute("aria-hidden", "true");
-      scale.append(element("span", "", "0 ms"), element("span", "", milliseconds(max)));
-      body.append(scale);
-    }
     chart.append(body);
     $("#metric-grid").append(chart);
   }
@@ -451,74 +551,6 @@ function renderEfficiency(models, tasks) {
   $("#efficiency").hidden = false;
 }
 
-function taskOutcome(task) {
-  if (task.score_percent === 100) return ["match", "Match"];
-  if (task.score_percent === 0) return ["mismatch", "Mismatch"];
-  if (task.status === "sql_error") return ["failed", "SQL timeout"];
-  if (task.status === "tool_format_error") return ["failed", "Missing tool call"];
-  return ["failed", "Not executed"];
-}
-
-function renderTask(task, model) {
-  const [status, label] = taskOutcome(task);
-  const details = element("details", "task");
-  const summary = element("summary");
-  const description = element("div", "task-description");
-  description.append(element("span", "task-meta", `#${task.question_id} / ${task.database} / ${task.difficulty}`), element("strong", "", task.question));
-  summary.append(description, element("span", "task-model", model.name), element("span", `outcome ${status}`, label));
-  const panel = element("div", "task-panel");
-  const stats = [];
-  if (task.comparison) stats.push(task.comparison.replaceAll("_", " "));
-  if (task.row_count !== null) stats.push(`${integer.format(task.row_count)} rows`);
-  if (task.sql_ms !== null) stats.push(milliseconds(task.sql_ms));
-  if (stats.length) panel.append(element("p", "task-meta", stats.join(" / ")));
-  const queries = element("div", "queries");
-  for (const [heading, query, missing] of [["Submitted SQL", task.sql, "No SQL was submitted."],
-    ["Reference SQL", task.reference_sql, "Reference comparison is unavailable for this task."]]) {
-    const column = element("div");
-    column.append(element("h3", "", heading));
-    if (query) {
-      const pre = element("pre");
-      pre.append(element("code", "", query));
-      column.append(pre);
-    } else column.append(element("p", "", missing));
-    queries.append(column);
-  }
-  panel.append(queries);
-  details.append(summary, panel);
-  return details;
-}
-
-function renderExplorer({models, tasks}) {
-  const names = new Map(models.map((model) => [model.key, model]));
-  const controls = $("#filters");
-  const filter = controls.elements;
-  const size = 10;
-  let page = 1;
-  for (const model of models) $("#model-filter").add(new Option(model.name, model.key));
-
-  function draw() {
-    const query = filter.query.value.trim().toLowerCase();
-    const found = tasks.filter((task) => (!filter.model.value || task.model === filter.model.value)
-      && (!filter.outcome.value || taskOutcome(task)[0] === filter.outcome.value)
-      && `${task.question_id} #${task.question_id} ${task.database} ${task.question}`.toLowerCase().includes(query));
-    const pages = Math.max(1, Math.ceil(found.length / size));
-    const start = (page - 1) * size;
-    const current = found.slice(start, start + size);
-    $("#task-count").textContent = found.length ? `Showing ${start + 1}–${start + current.length} of ${found.length} tasks` : "No tasks match. Try another search or change the filters.";
-    $("#task-list").replaceChildren(...current.map((task) => renderTask(task, names.get(task.model))));
-    $("#pagination").hidden = pages <= 1;
-    $("#page-number").textContent = `Page ${page} of ${pages}`;
-    $("#prev").disabled = page === 1;
-    $("#next").disabled = page === pages;
-  }
-
-  controls.addEventListener("submit", (event) => event.preventDefault());
-  controls.addEventListener("input", () => { page = 1; draw(); });
-  $("#prev").addEventListener("click", () => { page -= 1; draw(); });
-  $("#next").addEventListener("click", () => { page += 1; draw(); });
-  draw();
-}
 
 async function loadBenchmarkData() {
   if (location.protocol === "file:") {
@@ -545,8 +577,7 @@ async function load() {
     renderLeaderboard(data.models, data.weights);
     renderMetrics(data.models);
     renderEfficiency(data.models, data.tasks);
-    renderExplorer(data);
-    for (const selector of ["#leaderboard", "#metrics", "#explorer", "#method"]) $(selector).hidden = false;
+    for (const selector of ["#leaderboard", "#metrics", "#method"]) $(selector).hidden = false;
     $("#load-state").hidden = true;
     if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
   } catch (error) {

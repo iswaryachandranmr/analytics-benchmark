@@ -1,6 +1,6 @@
 # QueryBench
 
-QueryBench compares five models on a single, independent 75-question SQL benchmark. The static site shows the weighted leaderboard, each raw metric, and a searchable task explorer with submitted and reference SQL. It publishes through the existing GitHub Pages workflow.
+QueryBench compares five models on a single, independent 75-question SQL benchmark. The static site shows the weighted leaderboard, each raw metric, and model efficiency and difficulty comparisons. It publishes through the existing GitHub Pages workflow.
 
 The efficiency section compares cost, active time, and reported output tokens per assigned task, plus cost per correct answer. It also plots correctness against each per-task resource measure and shows accuracy by difficulty. These views use saved SQLite measurements and are separate from the weighted score.
 
@@ -31,5 +31,7 @@ python3 scripts/sync_data.py --database '/path/to/results/benchmark75.sqlite'
 The exporter defaults to `balanced75-high-200k-v2` and accepts `--run` for another fully reviewed run. It opens the database read-only. Commit `dist/assets/benchmark.json` with any updated source; GitHub Actions deploys `dist/` on pushes to `main`. The public export does not include database files, credentials, request/response payloads, provider reasoning, or result rows.
 
 ## Attribution
+
+Provider and social logos are from [Simple Icons](https://simpleicons.org/) (CC0); trademarks belong to their respective owners.
 
 Questions and reference SQL are derived from [BIRD Mini-Dev](https://huggingface.co/datasets/birdsql/bird_mini_dev) (Li et al., 2023), licensed [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). The reference queries use the original archive corresponding to the evaluated prompts. This sample is not an official BIRD leaderboard.
