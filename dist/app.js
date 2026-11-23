@@ -61,10 +61,14 @@ function renderLeaderboard(models, weights) {
   }
 
   for (const [index, model] of models.entries()) {
+    const isWinner = index === 0;
     const item = element("li");
-    const button = element("button", index === 0 ? "score-row chart-leader" : "score-row");
+    const button = element("button", isWinner ? "score-row chart-leader" : "score-row");
     const modelName = element("span", "score-model");
-    modelName.append(element("span", "rank", String(index + 1).padStart(2, "0")), element("span", "", model.name));
+    const modelLabel = element("span", "score-model-label");
+    modelLabel.append(element("span", "", model.name));
+    if (isWinner) modelLabel.append(element("span", "winner-label", "Highest weighted score"));
+    modelName.append(element("span", "rank", String(index + 1).padStart(2, "0")), modelLabel);
     const track = element("span", "score-track");
     track.setAttribute("aria-hidden", "true");
     for (const [key, points] of Object.entries(model.points)) {
@@ -74,7 +78,7 @@ function renderLeaderboard(models, weights) {
     }
     button.type = "button";
     button.setAttribute("aria-controls", "score-detail");
-    button.setAttribute("aria-label", `${model.name}: ${fixed(model.score)} out of 100, ${index === 0 ? "overall leader" : `rank ${index + 1}`}`);
+    button.setAttribute("aria-label", `${model.name}: ${fixed(model.score)} out of 100, ${isWinner ? "highest weighted score, rank 1" : `rank ${index + 1}`}`);
     button.addEventListener("click", () => select(model));
     button.append(modelName, track, element("strong", "score-total", fixed(model.score)));
     item.append(button);
@@ -220,6 +224,7 @@ async function load() {
     const response = await fetch("assets/benchmark.json");
     if (!response.ok) throw new Error(`Benchmark data returned HTTP ${response.status}`);
     const data = await response.json();
+    data.models.sort((first, second) => second.score - first.score);
     renderFacts(data);
     renderWeights(data.weights);
     renderLeaderboard(data.models, data.weights);

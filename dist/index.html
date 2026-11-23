@@ -6,8 +6,8 @@
   <meta name="description" content="Compare five models across 75 BIRD Mini-Dev SQL questions by correctness, cost, and execution speed.">
   <title>SQL Benchmark / QueryBench</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css">
-  <script src="app.js" defer></script>
+  <link rel="stylesheet" href="style.css?v=weighted-leader">
+  <script src="app.js?v=weighted-leader" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to benchmark</a>
@@ -25,7 +25,7 @@
       <div>
         <p class="dataset"><span></span> BIRD Mini-Dev / SQLite</p>
         <h1 id="title">SQL Benchmark</h1>
-        <p class="subtitle">Five models answer the same 75 questions. See who gets the right results, what it costs, and how fast the SQL runs.</p>
+        <p class="subtitle">Five models, 75 SQL questions. Compare correctness, cost, and execution speed.</p>
       </div>
       <dl class="run-facts" id="run-facts" aria-label="Benchmark coverage" hidden></dl>
     </section>
@@ -43,7 +43,7 @@
         <aside class="weight-key" aria-labelledby="weight-title">
           <h3 id="weight-title">Score weights</h3>
           <dl id="weight-list"></dl>
-          <p>Select a model to inspect its contributions and raw metrics.</p>
+          <p>Select a model for its score breakdown.</p>
         </aside>
         <div class="score-detail" id="score-detail" aria-live="polite"></div>
       </section>
