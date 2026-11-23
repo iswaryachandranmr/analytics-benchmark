@@ -32,25 +32,12 @@ function renderFacts(data) {
   $("#run-facts").hidden = false;
 }
 
-function renderConstellation(models, select) {
-  for (const [index, model] of models.entries()) {
-    const node = element("li", "model-node");
-    const link = element("a", "node-label");
-    link.href = "#leaderboard";
-    link.setAttribute("aria-label", `${model.name}, ${fixed(model.score)} out of 100${index === 0 ? ", highest weighted score" : ""}. View score breakdown.`);
-    link.append(element("span", "", model.name), element("strong", "", fixed(model.score)));
-    link.addEventListener("click", () => select(model));
-    node.append(link);
-    $("#constellation-models").append(node);
-  }
-  $("#constellation").hidden = false;
-}
-
 function renderWeights(weights) {
-  $("#leaderboard-weight-summary").textContent = `${weights.correctness}% correctness, ${weights.cost}% cost, ${weights.speed}% SQL speed.`;
+  $("#leaderboard-weight-summary").textContent = `${weights.correctness}% accuracy, ${weights.cost}% cost, ${weights.speed}% SQL speed.`;
   for (const [key, metric] of Object.entries(metrics)) {
+    const name = key === "correctness" ? "Accuracy" : metric.name;
     const weight = element("div", `weight ${key}`);
-    weight.append(element("dt", "", metric.name), element("dd", "", `${weights[key]}%`));
+    weight.append(element("dt", "", name), element("dd", "", `${weights[key]}%`));
     $("#weight-list").append(weight);
     const rule = element("div", key);
     rule.append(element("dt", "", `${metric.name} · ${weights[key]} pts`), element("dd", "", `${weights[key]} × (${metric.rule})`));
@@ -60,6 +47,8 @@ function renderWeights(weights) {
 
 function renderLeaderboard(models, weights) {
   const buttons = [];
+  $("#winning-score").textContent = fixed(models[0].score);
+  $("#winning-model").textContent = models[0].name;
   function select(model) {
     for (const [index, button] of buttons.entries()) {
       button.setAttribute("aria-pressed", String(models[index] === model));
@@ -78,6 +67,7 @@ function renderLeaderboard(models, weights) {
   for (const [index, model] of models.entries()) {
     const isWinner = index === 0;
     const item = element("li");
+    item.style.setProperty("--row-delay", `${index * 86}ms`);
     const button = element("button", isWinner ? "score-row chart-leader" : "score-row");
     const modelName = element("span", "score-model");
     const modelLabel = element("span", "score-model-label");
@@ -86,11 +76,14 @@ function renderLeaderboard(models, weights) {
     modelName.append(element("span", "rank", String(index + 1).padStart(2, "0")), modelLabel);
     const track = element("span", "score-track");
     track.setAttribute("aria-hidden", "true");
+    const fill = element("span", "score-fill");
+    fill.style.width = `${model.score}%`;
     for (const [key, points] of Object.entries(model.points)) {
       const segment = element("span", `segment ${key}`);
-      segment.style.width = `${points}%`;
-      track.append(segment);
+      segment.style.width = `${model.score ? 100 * points / model.score : 0}%`;
+      fill.append(segment);
     }
+    track.append(fill);
     button.type = "button";
     button.setAttribute("aria-controls", "score-detail");
     button.setAttribute("aria-label", `${model.name}: ${fixed(model.score)} out of 100, ${isWinner ? "highest weighted score, rank 1" : `rank ${index + 1}`}`);
@@ -101,7 +94,6 @@ function renderLeaderboard(models, weights) {
     buttons.push(button);
   }
   select(models[0]);
-  return select;
 }
 
 function costColumns(models, max) {
@@ -421,14 +413,13 @@ function renderExplorer({models, tasks}) {
 
 async function load() {
   try {
-    const response = await fetch("assets/benchmark.json?v=efficiency");
+    const response = await fetch("assets/benchmark.json?v=weighted-chart");
     if (!response.ok) throw new Error(`Benchmark data returned HTTP ${response.status}`);
     const data = await response.json();
     data.models.sort((first, second) => second.score - first.score);
     renderFacts(data);
     renderWeights(data.weights);
-    const selectModel = renderLeaderboard(data.models, data.weights);
-    renderConstellation(data.models, selectModel);
+    renderLeaderboard(data.models, data.weights);
     renderMetrics(data.models);
     renderEfficiency(data.models, data.tasks);
     renderExplorer(data);

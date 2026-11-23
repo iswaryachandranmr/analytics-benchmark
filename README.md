@@ -10,9 +10,9 @@ Each model earns up to 100 points:
 
 | Metric | Points | Formula |
 | --- | ---: | --- |
-| Correctness | 40 | `40 × reference matches ÷ assigned tasks` |
-| Cost | 40 | `40 × minimum model spend ÷ model spend` |
-| SQL speed | 20 | `20 × minimum mean SQL time ÷ model mean SQL time` |
+| Accuracy | 70 | `70 × reference matches ÷ assigned tasks` |
+| Cost | 20 | `20 × minimum model spend ÷ model spend` |
+| SQL speed | 10 | `10 × minimum mean SQL time ÷ model mean SQL time` |
 
 Correctness uses all 75 assigned tasks, so failures earn no credit. Spend includes saved attempts and continuation usage, using provider-reported charges when available (Kimi's spend is estimated). Mean SQL time includes timed final attempts and SQL timeouts, excludes missing calls, and does not include generation time. Scores are relative to this cohort and ranked at full precision before display rounding.
 

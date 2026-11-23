@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400..700&amp;family=Manrope:wght@400..700&amp;display=swap">
-  <link rel="stylesheet" href="style.css?v=paper">
-  <script src="app.js?v=paper" defer></script>
+  <link rel="stylesheet" href="style.css?v=weighted-chart">
+  <script src="app.js?v=weighted-chart" defer></script>
 </head>
 <body id="top">
   <a class="skip" href="#main">Skip to benchmark</a>
@@ -18,32 +18,16 @@
     <div class="shell masthead-inner">
       <a class="brand" href="./"><img src="assets/favicon.svg" width="30" height="30" alt="">QueryBench</a>
       <nav aria-label="Main navigation">
-        <a href="#metrics">Metrics</a><a href="#efficiency">Efficiency</a><a href="#explorer">Tasks</a><a class="nav-action" href="#leaderboard">See the leaderboard</a>
+        <a href="#metrics">Metrics</a><a href="#efficiency">Efficiency</a><a href="#explorer">Tasks</a><a class="nav-action" href="#leaderboard">Leaderboard</a>
       </nav>
     </div>
   </header>
   <main class="shell" id="main">
-    <section class="intro" aria-labelledby="title">
-      <div class="intro-copy">
-        <h1 id="title">Which model writes better SQL?</h1>
-        <p class="subtitle">Five models, one set of SQL questions. See which gets the right answers for the least cost and time.</p>
-        <a class="primary-link" href="#leaderboard">Explore the benchmark</a>
-      </div>
-      <figure class="constellation" id="constellation" hidden>
-        <div class="constellation-map">
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M48 48 C32 46 32 23 17 22 M48 48 C68 49 66 22 81 19 M48 48 C46 64 35 71 23 77 M48 48 C58 64 69 69 82 74"/>
-          </svg>
-          <ol id="constellation-models" aria-label="Models ranked by weighted score"></ol>
-        </div>
-        <figcaption>Weighted scores out of 100. Select a model to see its breakdown.</figcaption>
-      </figure>
-    </section>
     <p class="load-state" id="load-state" role="status">Loading benchmark results…</p>
     <div id="dashboard" hidden>
       <section class="leaderboard" id="leaderboard" aria-labelledby="leaderboard-title">
         <div class="leaderboard-header">
-          <div class="section-heading"><h2 id="leaderboard-title">Weighted leaderboard</h2><p id="leaderboard-weight-summary"></p></div>
+          <div class="section-heading"><p class="benchmark-source">BIRD Mini-Dev / SQLite</p><h1 id="leaderboard-title">Weighted leaderboard</h1><p id="leaderboard-weight-summary"></p></div>
           <dl class="run-facts" id="run-facts" aria-label="Benchmark coverage" hidden></dl>
         </div>
         <div class="leaderboard-main">
@@ -52,12 +36,16 @@
             <a href="#method">How it’s scored</a>
           </div>
           <div class="axis" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
-          <ol id="score-chart" class="rank-chart"></ol>
+          <ol id="score-chart" class="rank-chart" aria-label="Models ranked by weighted score"></ol>
         </div>
         <aside class="weight-key" aria-labelledby="weight-title">
+          <div class="winner-summary">
+            <p>Highest weighted score</p>
+            <strong id="winning-score"></strong>
+            <span id="winning-model"></span>
+          </div>
           <h3 id="weight-title">Score weights</h3>
           <dl id="weight-list"></dl>
-          <p>Select a model for its score breakdown.</p>
         </aside>
         <div class="score-detail" id="score-detail" aria-live="polite"></div>
       </section>

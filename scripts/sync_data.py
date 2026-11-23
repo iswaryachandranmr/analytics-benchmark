@@ -8,7 +8,7 @@ import sqlite3
 
 ROOT = Path(__file__).resolve().parents[1]
 RUN = "balanced75-high-200k-v2"
-WEIGHTS = {"correctness": 40, "cost": 40, "speed": 20}
+WEIGHTS = {"correctness": 70, "cost": 20, "speed": 10}
 
 
 def export(path, run_id):
