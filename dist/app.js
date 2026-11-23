@@ -62,7 +62,7 @@ function renderLeaderboard(models, weights) {
 
   for (const [index, model] of models.entries()) {
     const item = element("li");
-    const button = element("button", "score-row");
+    const button = element("button", index === 0 ? "score-row chart-leader" : "score-row");
     const modelName = element("span", "score-model");
     modelName.append(element("span", "rank", String(index + 1).padStart(2, "0")), element("span", "", model.name));
     const track = element("span", "score-track");
@@ -74,7 +74,7 @@ function renderLeaderboard(models, weights) {
     }
     button.type = "button";
     button.setAttribute("aria-controls", "score-detail");
-    button.setAttribute("aria-label", `${model.name}: ${fixed(model.score)} out of 100, rank ${index + 1}`);
+    button.setAttribute("aria-label", `${model.name}: ${fixed(model.score)} out of 100, ${index === 0 ? "overall leader" : `rank ${index + 1}`}`);
     button.addEventListener("click", () => select(model));
     button.append(modelName, track, element("strong", "score-total", fixed(model.score)));
     item.append(button);
@@ -84,25 +84,64 @@ function renderLeaderboard(models, weights) {
   select(models[0]);
 }
 
+function costColumns(models, max) {
+  const plot = element("div", "cost-plot");
+  plot.setAttribute("aria-hidden", "true");
+  const columns = element("div", "cost-columns");
+  for (const [index, model] of models.entries()) {
+    const column = element("div", index === 0 ? "cost-column chart-leader" : "cost-column");
+    const fill = element("span", "cost-fill");
+    fill.style.height = `${100 * model.cost / max}%`;
+    column.append(fill, element("span", "column-index", String(index + 1)));
+    columns.append(column);
+  }
+  plot.append(element("span", "cost-ceiling", currency.format(max)), columns, element("span", "cost-origin", "$0"));
+  return plot;
+}
+
 function renderMetrics(models) {
   for (const [key, metric] of Object.entries(metrics)) {
     const ordered = [...models].sort((first, second) => (metric.value(first) - metric.value(second)) * (metric.high ? -1 : 1));
     const max = metric.high ? 100 : metric.value(ordered[ordered.length - 1]);
     const chart = element("article", `metric-chart ${key}`);
     const list = element("ol");
-    for (const model of ordered) {
-      const row = element("li");
+    chart.append(element("h3", "", metric.name), element("p", "", metric.note));
+    if (key === "cost") chart.append(costColumns(ordered, max));
+    for (const [index, model] of ordered.entries()) {
+      const row = element("li", index === 0 ? "chart-leader" : "");
       const label = element("div", "metric-label");
-      label.append(element("span", "", model.name), element("strong", "", metric.format(model)));
-      const track = element("div", "metric-track");
-      track.setAttribute("aria-hidden", "true");
-      const fill = element("div", "metric-fill");
-      fill.style.width = `${100 * metric.value(model) / max}%`;
-      track.append(fill);
-      row.append(label, track);
+      const name = element("span", "metric-name");
+      const mark = element("span", key === "correctness" ? "accuracy-ring" : "metric-index", key === "cost" ? String(index + 1) : "");
+      mark.setAttribute("aria-hidden", "true");
+      if (key === "correctness") mark.style.setProperty("--value", `${accuracy(model)}%`);
+      if (key !== "speed") name.append(mark);
+      name.append(element("span", "", model.name));
+      if (model.key === models[0].key) {
+        const overall = element("span", "overall-mark", "◆");
+        overall.title = "Overall leader";
+        overall.setAttribute("role", "img");
+        overall.setAttribute("aria-label", "Overall leader");
+        name.append(overall);
+      }
+      label.append(name, element("strong", "", metric.format(model)));
+      row.append(label);
+      if (key === "speed") {
+        const track = element("div", "speed-track");
+        track.setAttribute("aria-hidden", "true");
+        const dot = element("span", "speed-dot");
+        dot.style.left = `${100 * metric.value(model) / max}%`;
+        track.append(dot);
+        row.append(track);
+      }
       list.append(row);
     }
-    chart.append(element("h3", "", metric.name), element("p", "", metric.note), list);
+    chart.append(list);
+    if (key === "speed") {
+      const scale = element("div", "speed-axis");
+      scale.setAttribute("aria-hidden", "true");
+      scale.append(element("span", "", "0 ms"), element("span", "", milliseconds(max)));
+      chart.append(scale);
+    }
     $("#metric-grid").append(chart);
   }
 }
