@@ -109,10 +109,6 @@ function renderFacts(data) {
 function renderWeights(weights) {
   $("#leaderboard-weight-summary").textContent = `${weights.correctness}% accuracy, ${weights.cost}% cost, ${weights.speed}% SQL speed.`;
   for (const [key, metric] of Object.entries(metrics)) {
-    const name = key === "correctness" ? "Accuracy" : metric.name;
-    const weight = element("div", `weight ${key}`);
-    weight.append(element("dt", "", name), element("dd", "", `${weights[key]}%`));
-    $("#weight-list").append(weight);
     const rule = element("div", key);
     rule.append(element("dt", "", `${metric.name} · ${weights[key]} pts`), element("dd", "", `${weights[key]} × (${metric.rule})`));
     $("#formula-list").append(rule);

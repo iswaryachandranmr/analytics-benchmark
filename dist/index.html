@@ -14,9 +14,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400..800&amp;family=Source+Serif+4:ital,opsz,wght@0,8..60,400..750;1,8..60,600&amp;display=swap">
-  <link rel="stylesheet" href="style.css?v=author-byline">
+  <link rel="stylesheet" href="style.css?v=score-panel">
   <script>document.documentElement.classList.add('m-enter');</script>
-  <script src="app.js?v=chart-selection" defer></script>
+  <script src="app.js?v=score-panel" defer></script>
 </head>
 <body id="top">
   <header class="nav masthead">
@@ -53,14 +53,12 @@
           <div class="axis" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
           <ol id="score-chart" class="rank-chart" aria-label="Models ranked by weighted score"></ol>
         </div>
-        <aside class="weight-key" aria-labelledby="weight-title">
+        <aside class="weight-key" aria-label="Highest weighted score">
           <div class="winner-summary">
             <p>Highest weighted score</p>
             <strong id="winning-score"></strong>
             <span id="winning-model"></span>
           </div>
-          <p class="weight-title" id="weight-title">Score weights</p>
-          <dl id="weight-list"></dl>
         </aside>
         <div class="score-detail" id="score-detail" aria-live="polite"></div>
         </div>
