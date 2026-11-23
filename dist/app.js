@@ -190,9 +190,10 @@ function renderMetrics(models) {
     const ordered = [...models].sort((first, second) => (metric.value(first) - metric.value(second)) * (metric.high ? -1 : 1));
     const max = metric.high ? 100 : metric.value(ordered[ordered.length - 1]);
     const chart = element("article", `metric-chart ${key}`);
+    const body = element("div", "metric-body");
     const list = element("ol");
     chart.append(element("h3", "", metric.name), element("p", "", metric.note));
-    if (key === "cost") chart.append(costColumns(ordered, max));
+    if (key === "cost") body.append(costColumns(ordered, max));
     for (const [index, model] of ordered.entries()) {
       const row = element("li", index === 0 ? "chart-leader" : "");
       const context = key === "correctness" ? `${model.correct} correct out of ${model.planned} tasks`
@@ -224,13 +225,14 @@ function renderMetrics(models) {
       }
       list.append(row);
     }
-    chart.append(list);
+    body.append(list);
     if (key === "speed") {
       const scale = element("div", "speed-axis");
       scale.setAttribute("aria-hidden", "true");
       scale.append(element("span", "", "0 ms"), element("span", "", milliseconds(max)));
-      chart.append(scale);
+      body.append(scale);
     }
+    chart.append(body);
     $("#metric-grid").append(chart);
   }
 }
