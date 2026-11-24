@@ -61,8 +61,8 @@ section { scroll-margin-top: 1.4rem; }
 .load-state { padding: 1.4rem 0; }
 
 .leaderboard { display: flex; flex-direction: column; gap: 1.25rem; min-height: calc(100svh - 5.85rem); padding-top: clamp(2rem, 4.6vw, 4.5rem); padding-bottom: 1rem; }
-.scroll-cue { display: grid; place-items: center; flex: none; align-self: center; width: max(2.75rem, 10vw); height: max(2.75rem, 4vw); margin-top: auto; color: var(--ink); text-decoration: none; }
-.scroll-cue svg { display: block; width: 10vw; height: 4vw; opacity: .7; }
+.scroll-cue { display: grid; place-items: center; flex: none; align-self: center; width: max(2.75rem, 8vw); height: max(2.75rem, 3.2vw); margin-top: auto; color: var(--ink); text-decoration: none; }
+.scroll-cue svg { display: block; width: 8vw; height: 3.2vw; opacity: .7; }
 .scroll-cue:hover svg, .scroll-cue:focus-visible svg { opacity: 1; }
 .leaderboard-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(12rem, .27fr); }
 .leaderboard-header { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); align-items: end; gap: 1rem; padding-bottom: clamp(1.3rem, 3.5vw, 2.4rem); }
