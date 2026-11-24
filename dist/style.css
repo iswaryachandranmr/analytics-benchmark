@@ -153,9 +153,9 @@ section { scroll-margin-top: 1.4rem; }
   .scroll-cue svg { animation: nudge-scroll 5.5s infinite; }
   .scroll-cue:hover svg, .scroll-cue:focus-visible svg { animation-play-state: paused; }
   @keyframes nudge-scroll {
-    0%, 68%, 100% { transform: translateY(5px); animation-timing-function: cubic-bezier(.4, 0, .6, 1); }
-    78% { transform: translateY(-3px); animation-timing-function: var(--settle); }
-    97% { transform: translateY(5px); }
+    0%, 54%, 78%, 98%, 100% { transform: translateY(6px); animation-timing-function: cubic-bezier(.4, 0, .6, 1); }
+    64% { transform: translateY(-4px); animation-timing-function: var(--settle); }
+    84% { transform: translateY(0); animation-timing-function: var(--settle); }
   }
   .m-enter [data-enter] h1 { animation: reveal-title 650ms cubic-bezier(.2, .72, .22, 1) both; }
   .score-fill { animation: reveal-score-bar 850ms cubic-bezier(.2, .72, .22, 1) var(--row-delay) both; }

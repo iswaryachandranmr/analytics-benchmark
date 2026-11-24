@@ -196,7 +196,7 @@ function animateModelRing(inspector, score) {
       return;
     }
     if (startedAt === null) startedAt = timestamp + 120;
-    const elapsed = Math.max(0, Math.min(1, (timestamp - startedAt) / 2400));
+    const elapsed = Math.max(0, Math.min(1, (timestamp - startedAt) / 1920));
     const progress = (1 - (1 + damping * elapsed) * Math.exp(-damping * elapsed)) / normalization;
     sweep.setAttribute("stroke-dashoffset", String(100 - score * progress));
     if (elapsed < 1) requestAnimationFrame(frame);
