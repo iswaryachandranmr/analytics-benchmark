@@ -60,7 +60,10 @@ section { scroll-margin-top: 1.4rem; }
 .run-facts dd { font-size: 1.375rem; font-weight: 650; line-height: 1.05; letter-spacing: -.025em; }
 .load-state { padding: 1.4rem 0; }
 
-.leaderboard { min-height: calc(100svh - 5.85rem); padding-top: clamp(2rem, 4.6vw, 4.5rem); }
+.leaderboard { display: flex; flex-direction: column; gap: 1.25rem; min-height: calc(100svh - 5.85rem); padding-top: clamp(2rem, 4.6vw, 4.5rem); padding-bottom: 1rem; }
+.scroll-cue { display: grid; place-items: center; flex: none; align-self: center; width: 2.75rem; height: 2.75rem; margin-top: auto; color: var(--ink); text-decoration: none; }
+.scroll-cue svg { display: block; opacity: .6; }
+.scroll-cue:hover svg, .scroll-cue:focus-visible svg { opacity: 1; }
 .leaderboard-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(12rem, .27fr); }
 .leaderboard-header { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); align-items: end; gap: 1rem; padding-bottom: clamp(1.3rem, 3.5vw, 2.4rem); }
 .leaderboard-header .section-heading { margin: 0; }
@@ -145,10 +148,15 @@ section { scroll-margin-top: 1.4rem; }
 
 @media (prefers-reduced-motion: no-preference) {
   .model-inspector { animation: reveal-inspector 650ms var(--settle) both; }
-  .model-ring-sweep { animation: draw-model-ring 1500ms var(--settle) 100ms both; }
   .model-ring-center { animation: reveal-score-total 700ms var(--settle) 180ms both; }
   @keyframes reveal-inspector { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
-  @keyframes draw-model-ring { from { stroke-dasharray: 0 100; } to { stroke-dasharray: var(--ring-score) calc(100 - var(--ring-score)); } }
+  .scroll-cue svg { animation: nudge-scroll 5.5s infinite; }
+  .scroll-cue:hover svg, .scroll-cue:focus-visible svg { animation-play-state: paused; }
+  @keyframes nudge-scroll {
+    0%, 68%, 100% { transform: translateY(5px); animation-timing-function: cubic-bezier(.4, 0, .6, 1); }
+    78% { transform: translateY(-3px); animation-timing-function: var(--settle); }
+    97% { transform: translateY(5px); }
+  }
   .m-enter [data-enter] h1 { animation: reveal-title 650ms cubic-bezier(.2, .72, .22, 1) both; }
   .score-fill { animation: reveal-score-bar 850ms cubic-bezier(.2, .72, .22, 1) var(--row-delay) both; }
   .score-total { animation: reveal-score-total 320ms ease-out calc(var(--row-delay) + 390ms) both; }

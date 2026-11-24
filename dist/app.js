@@ -156,8 +156,8 @@ function createModelInspector(model, sequence) {
   const sweep = circle("model-ring-sweep");
   sweep.setAttribute("stroke", "white");
   sweep.setAttribute("stroke-width", "10");
-  sweep.setAttribute("stroke-dasharray", `${model.score} ${100 - model.score}`);
-  sweep.style.setProperty("--ring-score", model.score);
+  sweep.setAttribute("stroke-dasharray", "100 100");
+  sweep.setAttribute("stroke-dashoffset", "100");
   mask.append(sweep);
   definitions.append(mask);
   const segments = document.createElementNS(namespace, "g");
@@ -183,6 +183,27 @@ function createModelInspector(model, sequence) {
   return inspector;
 }
 
+function animateModelRing(inspector, score) {
+  const sweep = inspector.querySelector(".model-ring-sweep");
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  const damping = 5;
+  const normalization = 1 - (1 + damping) * Math.exp(-damping);
+  let startedAt = null;
+  function frame(timestamp) {
+    if (!inspector.isConnected) return;
+    if (reducedMotion.matches) {
+      sweep.setAttribute("stroke-dashoffset", String(100 - score));
+      return;
+    }
+    if (startedAt === null) startedAt = timestamp + 120;
+    const elapsed = Math.max(0, Math.min(1, (timestamp - startedAt) / 2400));
+    const progress = (1 - (1 + damping * elapsed) * Math.exp(-damping * elapsed)) / normalization;
+    sweep.setAttribute("stroke-dashoffset", String(100 - score * progress));
+    if (elapsed < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
 function renderLeaderboard(models, weights) {
   const buttons = [];
   let viewerSequence = 0;
@@ -202,7 +223,9 @@ function renderLeaderboard(models, weights) {
     }
     if (sequence !== viewerSequence) return;
     viewer.setAttribute("aria-label", `${model.name} score breakdown`);
-    viewer.replaceChildren(createModelInspector(model, sequence));
+    const inspector = createModelInspector(model, sequence);
+    viewer.replaceChildren(inspector);
+    animateModelRing(inspector, model.score);
   }
   function select(model, showViewer = false) {
     for (const [index, button] of buttons.entries()) {
